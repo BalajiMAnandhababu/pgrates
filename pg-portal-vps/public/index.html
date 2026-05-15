@@ -298,6 +298,15 @@ input,select,textarea{font-family:inherit;outline:none}
     <div class="amount-filter-lbl">Transaction Amount (filter by max limit)</div>
     <div class="amount-input-wrap"><span class="amount-prefix">₹</span><input class="amount-input" type="number" id="cfAmount" placeholder="e.g. 50000" oninput="renderCardFinder()"></div>
   </div>
+  <div class="amount-filter">
+    <div class="amount-filter-lbl">Issuer Bank — show gateways where this bank's cards work</div>
+    <div class="amount-input-wrap"><input class="amount-input" type="text" id="cfIssuer" placeholder="e.g. ICICI, HDFC, SBI..." oninput="renderCardFinder()" style="padding-left:12px"></div>
+  </div>
+  <div class="sort-row" style="margin:0 0 10px">
+    <span class="sort-label">Sort:</span>
+    <button class="sort-btn active" id="cfSortRate" onclick="cfSetSort('rate',this)">PG Rate ↑</button>
+    <button class="sort-btn" id="cfSortSwipe" onclick="cfSetSort('swipe',this)">Swipe Rate ↑</button>
+  </div>
   <div id="cfResults"></div>
 </div>
 
@@ -388,6 +397,7 @@ let pgRatesAll = [];    // all rows including inactive (for admin)
 let issuerBlocks = [];  // active issuer blocks
 let issuerBlocksAll = [];
 let cfScheme = 'ALL';
+let cfSort   = 'rate';
 let activePage = 'Home';
 let adminUnlocked = false;
 let editingSheet = null;
@@ -712,11 +722,13 @@ function quickFindGcat(){
 // CARD FINDER
 // ══════════════════════════════════════════════════════════════════════════════
 function cfSelectScheme(s,btn){ cfScheme=s; document.querySelectorAll('.cf-scheme-btn').forEach(b=>b.classList.remove('sel')); if(btn) btn.classList.add('sel'); renderCardFinder(); }
+function cfSetSort(s,btn){ cfSort=s; document.querySelectorAll('#pageCardFinder .sort-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderCardFinder(); }
 
 function renderCardFinder(){
   const cat=document.getElementById('cfCat').value;
   const gcat=document.getElementById('cfGcat').value;
   const amount=parseFloat(document.getElementById('cfAmount').value)||0;
+  const issuerQ=(document.getElementById('cfIssuer').value||'').trim().toUpperCase();
   let filtered=pgRates.filter(r=>{
     if(cfScheme!=='ALL'&&!r['CARD SCHEME'].includes(cfScheme)) return false;
     if(cat!=='ALL'&&!r['CARD CATEGORY'].includes(cat)) return false;
@@ -724,15 +736,25 @@ function renderCardFinder(){
     if(amount>0&&parseFloat(r['MAX AMOUNT (₹)'])>0&&parseFloat(r['MAX AMOUNT (₹)'])<amount) return false;
     return true;
   });
-  filtered.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
+  const sortKey = cfSort==='swipe' ? 'SWIPE RATE (%)' : 'PG RATE (%)';
+  filtered.sort((a,b)=>a[sortKey]-b[sortKey]);
   const groups={};
   filtered.forEach(r=>{ const k=r['VENDOR']+'|||'+r['PG NAME']; if(!groups[k]) groups[k]={rows:[],rep:r}; groups[k].rows.push(r); });
-  const sortedGroups=Object.values(groups).sort((a,b)=>Math.min(...a.rows.map(r=>r['PG RATE (%)']))-Math.min(...b.rows.map(r=>r['PG RATE (%)'])));
+  let sortedGroups=Object.values(groups).sort((a,b)=>Math.min(...a.rows.map(r=>r[sortKey]))-Math.min(...b.rows.map(r=>r[sortKey])));
+  // Filter out gateways where the issuer bank is blocked
+  if(issuerQ){
+    sortedGroups=sortedGroups.filter(({rep})=>{
+      const blocks=issuerBlocks.filter(b=>b['VENDOR']===rep['VENDOR']&&(b['PG NAME']===rep['PG NAME']||b['PG NAME']==='ALL')&&b['IS_BLOCKED']==='YES');
+      return !blocks.some(b=>(b['ISSUER BANK']||'').toUpperCase().includes(issuerQ));
+    });
+  }
   const container=document.getElementById('cfResults');
   if(!sortedGroups.length){ container.innerHTML='<div class="no-results">No gateways match. Adjust filters.</div>'; return; }
-  container.innerHTML=`<div style="margin-bottom:8px" class="results-count">${sortedGroups.length} gateways · cheapest first</div>`+
+  const sortLabel=cfSort==='swipe'?'lowest swipe rate':'cheapest first';
+  container.innerHTML=`<div style="margin-bottom:8px" class="results-count">${sortedGroups.length} gateways · ${sortLabel}</div>`+
   sortedGroups.map(({rows,rep})=>{
     const minRate=Math.min(...rows.map(r=>r['PG RATE (%)']));
+    const minSwipe=Math.min(...rows.map(r=>r['SWIPE RATE (%)']));
     const maxLimit=Math.max(...rows.map(r=>parseFloat(r['MAX AMOUNT (₹)'])||0));
     const blocks=issuerBlocks.filter(b=>b['VENDOR']===rep['VENDOR']&&(b['PG NAME']===rep['PG NAME']||b['PG NAME']==='ALL')&&b['IS_BLOCKED']==='YES');
     const schemes=[...new Set(rows.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
@@ -747,19 +769,21 @@ function renderCardFinder(){
             ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
             ${rep['PAYMENT GATEWAY AGGREGATOR']?`<span class="agg-tag">⚡ ${rep['PAYMENT GATEWAY AGGREGATOR']}</span>`:''}
           </div>
-          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:3px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']).join(', ')} restricted</div>`:''}
+          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ Blocked: ${blocks.map(b=>b['ISSUER BANK']).join(' · ')}</div>`:'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600">✓ No issuer restrictions</div>'}
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--accent)">${fmtRate(minRate)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${fmtRate(minRate)}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--amber)">Swipe ${fmtRate(minSwipe)}</div>
           <div style="font-size:11px;color:var(--ink3);margin-top:2px">Max ${fmtAmt(maxLimit)}</div>
         </div>
       </div>
       <div class="pgc-detail">
         ${rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px">
           <div>${schemeBadge(r['CARD SCHEME'])} <span style="color:var(--ink3)">${r['CARD CATEGORY']}</span></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
             <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${fmtRate(r['PG RATE (%)'])}</span>
-            <span style="font-family:'DM Mono',monospace;color:var(--ink3);font-size:11px">Max ₹${fmtNum(r['MAX AMOUNT (₹)'])}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtRate(r['SWIPE RATE (%)'])}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--ink3);font-size:11px">${fmtAmt(parseFloat(r['MAX AMOUNT (₹)'])||0)}</span>
           </div>
         </div>`).join('')}
       </div>
@@ -995,7 +1019,7 @@ async function saveIBRow(){
 // ══════════════════════════════════════════════════════════════════════════════
 function fmtRate(v){ if(!v&&v!==0) return '—'; return parseFloat(v).toFixed(2)+'%'; }
 function fmtAmt(v){ if(!v) return '—'; if(v>=100000) return '₹'+(v/100000).toFixed(1)+'L'; if(v>=1000) return '₹'+(v/1000).toFixed(0)+'K'; return '₹'+v; }
-function fmtNum(v){ if(!v) return '—'; return Number(v).toLocaleString('en-IN'); }
+function fmtNum(v){ const n=parseFloat(v); if(!v||isNaN(n)) return '—'; return n.toLocaleString('en-IN'); }
 function schemeName(s){
   if(!s) return s;
   if(s.includes('VISA')&&s.includes('MASTER')&&s.includes('RUPAY')) return 'V+MC+RuPay';
