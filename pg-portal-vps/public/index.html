@@ -201,6 +201,9 @@ input,select,textarea{font-family:inherit;outline:none}
 .save-btn:active{opacity:.85}
 .cancel-btn{width:100%;padding:11px;background:var(--line2);color:var(--ink3);border-radius:var(--r-sm);font-size:13px;font-weight:600;margin-top:6px}
 .add-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:1.5px dashed var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-l);width:100%;margin-bottom:12px}
+.multi-check{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0}
+.check-lbl{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;background:var(--line2);border:1.5px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;user-select:none}
+.check-lbl input{accent-color:var(--accent);width:14px;height:14px}
 
 /* ── MODAL ────────────────────────────────────────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:flex-end;justify-content:center}
@@ -933,14 +936,15 @@ function pgFormHTML(data={}) {
       `<input type="${type}" id="mf_${id}" value="${val}" placeholder="${label}">`
     }</div>`;
   const sel = (id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  const multiSel = (id,options,val)=>{ const cur=(val||'').split(',').map(s=>s.trim()).filter(Boolean); return `<div class="multi-check">${options.map(o=>`<label class="check-lbl"><input type="checkbox" name="mf_${id}" value="${o}" ${cur.includes(o)?'checked':''}> ${o}</label>`).join('')}</div>`; };
 
   return `<div class="form-grid">
     <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors" placeholder="Vendor name"><datalist id="dl_vendors">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
     <div class="form-field form-full"><label>PG NAME</label><input id="mf_pgname" value="${data['PG NAME']||''}" placeholder="Gateway name"></div>
     <div class="form-field"><label>GATEWAY CATEGORY</label>${sel('gcat',GATEWAY_CATEGORIES,data['GATEWAY CATEGORY']||'')}</div>
     <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'')}</div>
-    <div class="form-field"><label>CARD SCHEME</label>${sel('scheme',SCHEMES,data['CARD SCHEME']||'VISA')}</div>
-    <div class="form-field"><label>CARD CATEGORY</label>${sel('cardcat',CARD_CATS,data['CARD CATEGORY']||'CONSUMER')}</div>
+    <div class="form-field form-full"><label>CARD SCHEME</label>${multiSel('scheme',SCHEMES,data['CARD SCHEME']||'')}</div>
+    <div class="form-field form-full"><label>CARD CATEGORY</label>${multiSel('cardcat',['CONSUMER','BUSINESS','GOVERNMENT'],data['CARD CATEGORY']||'')}</div>
     <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)']||''}" placeholder="e.g. 1.60"></div>
     <div class="form-field"><label>SWIPE RATE (%)</label><input type="number" step="0.01" id="mf_swipe" value="${data['SWIPE RATE (%)']||''}" placeholder="e.g. 2.30"></div>
     <div class="form-field"><label>MIN AMOUNT (₹)</label><input type="number" id="mf_min" value="${data['MIN AMOUNT (₹)']||''}" placeholder="e.g. 100"></div>
@@ -990,11 +994,12 @@ function closeModal(e){ if(e.target===document.getElementById('modalOverlay')) c
 function closeModalDirect(){ document.getElementById('modalOverlay').classList.remove('open'); }
 
 function g(id){ const el=document.getElementById('mf_'+id); return el?el.value.trim():''; }
+function getChecked(name){ return [...document.querySelectorAll(`input[name="mf_${name}"]:checked`)].map(x=>x.value).join(', '); }
 
 async function savePGRow(){
   const values = [
     g('vendor'),g('pgname'),g('gcat'),g('agg'),g('cat'),g('settle'),
-    g('scheme'),g('cardcat'),g('pgrate'),g('swipe'),g('min'),g('max'),g('rupay'),
+    getChecked('scheme'),getChecked('cardcat'),g('pgrate'),g('swipe'),g('min'),g('max'),g('rupay'),
     g('status'),''
   ];
   if(!values[0]||!values[1]||!values[8]){ showToast('Vendor, PG Name and Rate are required'); return; }
