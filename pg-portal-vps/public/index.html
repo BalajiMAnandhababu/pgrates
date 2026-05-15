@@ -397,6 +397,7 @@ const ADMIN_PIN = '2580';
 // ══════════════════════════════════════════════════════════════════════════════
 let pgRates = [];       // active PG_RATES rows only (for users)
 let pgRatesAll = [];    // all rows including inactive (for admin)
+let pgRatesHeaders = []; // column header order from sheet (for correct save ordering)
 let issuerBlocks = [];  // active issuer blocks
 let issuerBlocksAll = [];
 let cfScheme = 'ALL';
@@ -447,6 +448,7 @@ async function loadData() {
 }
 
 function processData(data) {
+  pgRatesHeaders = data.PG_RATES?.headers || [];
   const pgRows = data.PG_RATES?.rows || [];
   pgRows.forEach(r => {
     r['PG RATE (%)']     = parseFloat(r['PG RATE (%)'])    || 0;
@@ -783,6 +785,7 @@ function renderCardFinder(){
           <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${fmtRate(minRate)}</div>
           <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--amber)">Swipe ${fmtRate(minSwipe)}</div>
           <div style="font-size:11px;color:var(--ink3);margin-top:2px">Max ${fmtAmt(maxLimit)}</div>
+          ${rep['SETTLEMENT TYPE']?`<div style="font-size:10px;font-weight:700;margin-top:4px;padding:2px 7px;border-radius:4px;display:inline-block;${rep['SETTLEMENT TYPE']==='INSTANT'?'background:var(--green-l);color:var(--green)':rep['SETTLEMENT TYPE']==='T+1'?'background:var(--amber-l);color:var(--amber)':'background:var(--line2);color:var(--ink3)'}">${rep['SETTLEMENT TYPE']}</div>`:''}
         </div>
       </div>
       <div class="pgc-detail">
@@ -943,7 +946,7 @@ function pgFormHTML(data={}) {
       `<input type="${type}" id="mf_${id}" value="${val}" placeholder="${label}">`
     }</div>`;
   const sel = (id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
-  const multiSel = (id,options,val)=>{ const cur=(val||'').split(',').map(s=>s.trim()).filter(Boolean); return `<div class="multi-check">${options.map(o=>`<label class="check-lbl"><input type="checkbox" name="mf_${id}" value="${o}" ${cur.includes(o)?'checked':''}> ${o}</label>`).join('')}</div>`; };
+  const multiSel = (id,options,val)=>{ const cur=(val||'').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean); return `<div class="multi-check">${options.map(o=>`<label class="check-lbl"><input type="checkbox" name="mf_${id}" value="${o}" ${cur.includes(o.toUpperCase())?'checked':''}> ${o}</label>`).join('')}</div>`; };
 
   return `<div class="form-grid">
     <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors" placeholder="Vendor name"><datalist id="dl_vendors">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
@@ -1004,12 +1007,35 @@ function g(id){ const el=document.getElementById('mf_'+id); return el?el.value.t
 function getChecked(name){ return [...document.querySelectorAll(`input[name="mf_${name}"]:checked`)].map(x=>x.value).join(', '); }
 
 async function savePGRow(){
-  const values = [
-    g('vendor'),g('pgname'),g('gcat'),g('agg'),g('cat'),g('settle'),
-    getChecked('scheme'),getChecked('cardcat'),g('pgrate'),g('swipe'),g('min'),g('max'),g('rupay'),
-    g('status'),''
-  ];
-  if(!values[0]||!values[1]||!values[8]){ showToast('Vendor, PG Name and Rate are required'); return; }
+  const scheme = getChecked('scheme');
+  const cardcat = getChecked('cardcat');
+  const vendor = g('vendor'), pgname = g('pgname'), pgrate = g('pgrate');
+  if(!vendor||!pgname||!pgrate){ showToast('Vendor, PG Name and Rate are required'); return; }
+  if(!scheme){ showToast('Select at least one Card Scheme'); return; }
+
+  // Build field map keyed by sheet header name
+  const fieldMap = {
+    'VENDOR': vendor,
+    'PG NAME': pgname,
+    'GATEWAY CATEGORY': g('gcat'),
+    'PAYMENT GATEWAY AGGREGATOR': g('agg'),
+    'CATEGORY': g('cat'),
+    'SETTLEMENT TYPE': g('settle'),
+    'CARD SCHEME': scheme,
+    'CARD CATEGORY': cardcat,
+    'PG RATE (%)': pgrate,
+    'SWIPE RATE (%)': g('swipe'),
+    'MIN AMOUNT (₹)': g('min'),
+    'MAX AMOUNT (₹)': g('max'),
+    'RUPAY LIMIT (₹)': g('rupay'),
+    'STATUS': g('status'),
+  };
+
+  // Use sheet header order so values land in the correct columns
+  const values = pgRatesHeaders.length > 0
+    ? pgRatesHeaders.map(h => fieldMap[h] ?? '')
+    : Object.values(fieldMap); // fallback if headers not yet loaded
+
   try {
     await apiWrite('PG_RATES', editingRowIndex, values, editingRowIndex===null?'add':'update');
     closeModalDirect(); showToast('Saved ✓'); await loadData();
