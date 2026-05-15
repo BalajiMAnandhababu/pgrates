@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>PG Rate Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ────────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#0f172a;--ink2:#334155;--ink3:#64748b;--ink4:#94a3b8;
+  --paper:#f8fafc;--white:#ffffff;--line:#e2e8f0;--line2:#f1f5f9;
+  --visa:#1a56db;--mc:#eb5757;--rupay:#16a34a;--amex:#7c3aed;--diners:#b45309;--multi:#0891b2;
+  --accent:#2563eb;--accent-l:#dbeafe;
+  --green:#16a34a;--green-l:#dcfce7;
+  --amber:#d97706;--amber-l:#fef3c7;
+  --red:#dc2626;--red-l:#fee2e2;
+  --teal:#0d9488;--teal-l:#ccfbf1;
+  --purple:#7c3aed;--purple-l:#ede9fe;
+  --nav-h:56px;--r:14px;--r-sm:9px;
+}
+html{font-size:15px;scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;min-height:100dvh;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px)}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input,select,textarea{font-family:inherit;outline:none}
+
+/* ── TOPBAR ───────────────────────────────────────────────────────────── */
+.topbar{position:sticky;top:0;z-index:100;background:var(--ink);padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.logo-name{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#fff;letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:#94a3b8;margin-top:1px}
+.data-badge{font-size:10px;font-weight:600;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#94a3b8;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.data-badge.fresh{color:#34d399;border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08)}
+.data-badge.loading{color:#fbbf24;border-color:rgba(251,191,36,.3);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── BOTTOM NAV ───────────────────────────────────────────────────────── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--white);border-top:1px solid var(--line);height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;align-items:stretch}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;color:var(--ink4);transition:color .15s;border-top:2px solid transparent}
+.nav-tab.active{color:var(--accent);border-top-color:var(--accent)}
+.nav-tab svg{width:20px;height:20px;stroke-width:1.8}
+.nav-tab span{font-size:10px;font-weight:600;letter-spacing:.3px}
+
+/* ── PAGES ────────────────────────────────────────────────────────────── */
+.page{display:none;padding:14px 14px 0;animation:fadeUp .18s ease both}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── HOME ─────────────────────────────────────────────────────────────── */
+.home-hero{background:var(--ink);border-radius:var(--r);padding:20px 18px 18px;margin-bottom:14px;position:relative;overflow:hidden}
+.home-hero::before{content:'';position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.25),transparent 70%)}
+.home-hero-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#fff;line-height:1.2;margin-bottom:6px}
+.home-hero-sub{font-size:13px;color:#94a3b8;line-height:1.5}
+.search-wrap{position:relative;margin-bottom:14px}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink3);pointer-events:none}
+.search-icon svg{width:17px;height:17px;stroke-width:2}
+.search-input{width:100%;padding:11px 14px 11px 40px;background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);font-size:14px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.search-input::placeholder{color:var(--ink4)}
+.section-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin-bottom:10px;padding-left:2px}
+.vendor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:16px}
+.vendor-chip{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px 12px 11px;text-align:left;transition:all .15s;position:relative;overflow:hidden}
+.vendor-chip:active{transform:scale(.97);background:var(--line2)}
+.vc-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px;line-height:1.2}
+.vc-meta{font-size:11px;color:var(--ink3)}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.results-count{font-size:11px;font-weight:600;background:var(--accent-l);color:var(--accent);padding:3px 10px;border-radius:20px}
+.back-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink3);padding:5px 0}
+.back-btn svg{width:14px;height:14px;stroke-width:2.5}
+.quickfind-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.qf-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px;display:flex;flex-direction:column;gap:6px}
+.qf-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3)}
+.qf-select{width:100%;padding:7px 10px;background:var(--line2);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--ink);-webkit-appearance:none;appearance:none}
+.qf-btn{background:var(--accent);color:#fff;padding:7px;border-radius:6px;font-size:12px;font-weight:600;text-align:center}
+
+/* ── RATE CARD ────────────────────────────────────────────────────────── */
+.rc-vendor-banner{background:var(--ink);border-radius:var(--r);padding:16px 16px 14px;margin-bottom:12px}
+.rc-vendor-name{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#fff}
+.rc-vendor-meta{font-size:11px;color:#94a3b8;margin-top:3px}
+.chip-row{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chip-row::-webkit-scrollbar{display:none}
+.fchip{flex-shrink:0;padding:6px 13px;border:1.5px solid var(--line);border-radius:20px;font-size:12px;font-weight:600;color:var(--ink3);background:var(--white);transition:all .12s;white-space:nowrap}
+.fchip.active{color:var(--white);border-color:transparent}
+.fchip[data-scheme="ALL"].active{background:var(--ink)}
+.fchip[data-scheme*="VISA"].active{background:var(--visa)}
+.fchip[data-scheme*="MASTER"].active{background:var(--mc)}
+.fchip[data-scheme="RUPAY"].active{background:var(--rupay)}
+.fchip[data-scheme="AMEX"].active{background:var(--amex)}
+.fchip[data-scheme*="DINERS"].active{background:var(--diners)}
+.fchip[data-cat].active,.fchip[data-gcat].active{background:var(--ink2)}
+.sort-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sort-label{font-size:11px;font-weight:600;color:var(--ink3);white-space:nowrap}
+.sort-btn{padding:5px 11px;border:1.5px solid var(--line);border-radius:6px;font-size:11px;font-weight:600;color:var(--ink3);background:var(--white)}
+.sort-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* PG cards */
+.pg-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r);margin-bottom:9px;overflow:hidden}
+.pgc-head{padding:12px 14px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;cursor:pointer}
+.pgc-name{font-size:13px;font-weight:700;color:var(--ink);line-height:1.3;flex:1}
+.pgc-category{font-size:10px;font-weight:600;background:var(--line2);color:var(--ink3);padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.pgc-rates{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.pgc-rate-box{background:var(--white);padding:9px 10px;text-align:center}
+.pgc-rate-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-bottom:3px}
+.pgc-rate-val{font-family:'DM Mono',monospace;font-size:16px;font-weight:500}
+.pgc-rate-val.rate{color:var(--accent)}
+.pgc-rate-val.swipe{color:var(--amber)}
+.pgc-rate-val.limit{color:var(--green);font-size:13px}
+.pgc-detail{padding:10px 14px 12px;border-top:1px solid var(--line);display:none}
+.pgc-detail.open{display:block}
+.pgc-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.pgc-di-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-bottom:3px}
+.pgc-di-val{font-size:12px;font-weight:600;color:var(--ink)}
+
+/* Scheme badges */
+.scheme-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sbadge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+.sbadge-visa{background:#dbeafe;color:var(--visa)}
+.sbadge-mc{background:#fee2e2;color:var(--mc)}
+.sbadge-rupay{background:#dcfce7;color:var(--rupay)}
+.sbadge-amex{background:#ede9fe;color:var(--amex)}
+.sbadge-diners{background:#fef3c7;color:var(--diners)}
+.sbadge-multi{background:#cffafe;color:var(--multi)}
+
+/* Category tags */
+.gcat-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--purple-l);color:var(--purple);margin-top:4px}
+.agg-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--teal-l);color:var(--teal);margin-top:4px;margin-left:4px}
+
+/* ── CARD FINDER ──────────────────────────────────────────────────────── */
+.cf-scheme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.cf-scheme-btn{background:var(--white);border:2px solid var(--line);border-radius:var(--r-sm);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .15s}
+.cf-scheme-btn.sel{border-width:2px}
+.cf-scheme-btn[data-s="VISA"].sel{border-color:var(--visa);background:#eff6ff}
+.cf-scheme-btn[data-s="MASTERCARD"].sel{border-color:var(--mc);background:#fff5f5}
+.cf-scheme-btn[data-s="RUPAY"].sel{border-color:var(--rupay);background:#f0fdf4}
+.cf-scheme-btn[data-s="AMEX"].sel{border-color:var(--amex);background:#faf5ff}
+.cf-scheme-btn[data-s="DINERS CLUB"].sel{border-color:var(--diners);background:#fffbeb}
+.cf-scheme-btn[data-s="ALL"].sel{border-color:var(--ink);background:var(--ink2);color:#fff}
+.cf-icon{font-size:24px;line-height:1}
+.cf-name{font-size:11px;font-weight:700;text-align:center;line-height:1.2}
+.cf-filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.cf-filter-box{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.cf-filter-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:5px}
+.cf-filter-sel{width:100%;padding:6px 8px;background:var(--line2);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--ink);-webkit-appearance:none;appearance:none}
+.amount-filter{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px}
+.amount-filter-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:5px}
+.amount-input-wrap{display:flex;align-items:center;gap:8px}
+.amount-prefix{font-size:13px;font-weight:600;color:var(--ink3)}
+.amount-input{flex:1;padding:7px 10px;background:var(--line2);border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--ink)}
+
+/* ── ALL PGS ──────────────────────────────────────────────────────────── */
+.allpg-filters{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.allpg-filter{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:8px 11px}
+.allpg-filter label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);display:block;margin-bottom:4px}
+.allpg-filter select{width:100%;padding:5px 8px;background:var(--line2);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--ink);-webkit-appearance:none;appearance:none}
+
+/* ── ADMIN ────────────────────────────────────────────────────────────── */
+.admin-lock{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r);padding:24px 18px;text-align:center;margin-bottom:14px}
+.admin-lock-icon{font-size:36px;margin-bottom:12px}
+.admin-lock-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px}
+.admin-lock-sub{font-size:13px;color:var(--ink3);margin-bottom:16px}
+.pin-input{width:100%;padding:11px 14px;border:2px solid var(--line);border-radius:var(--r-sm);font-size:20px;letter-spacing:6px;text-align:center;color:var(--ink);background:var(--line2);margin-bottom:10px}
+.pin-input:focus{border-color:var(--accent)}
+.unlock-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border-radius:var(--r-sm);font-size:14px;font-weight:700}
+.admin-panel{display:none}
+.admin-panel.open{display:block}
+.admin-section{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.admin-section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.admin-tabs{display:flex;gap:8px;margin-bottom:14px}
+.admin-tab{flex:1;padding:9px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-size:12px;font-weight:700;color:var(--ink3);text-align:center;background:var(--white)}
+.admin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Admin table */
+.admin-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid var(--line);margin-bottom:12px}
+.admin-table{width:100%;border-collapse:collapse;font-size:11px;min-width:800px}
+.admin-table th{background:var(--ink);color:#fff;padding:8px 10px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0}
+.admin-table td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.admin-table tr:last-child td{border-bottom:none}
+.admin-table tr:hover td{background:var(--line2)}
+.admin-table tr.inactive td{opacity:.45}
+
+/* Status toggle */
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:none;transition:all .15s}
+.status-pill.active{background:var(--green-l);color:var(--green)}
+.status-pill.inactive{background:var(--red-l);color:var(--red)}
+
+/* Edit/Delete buttons */
+.tbl-edit-btn{font-size:10px;font-weight:600;color:var(--accent);padding:3px 8px;background:var(--accent-l);border-radius:4px;white-space:nowrap;margin-right:4px}
+.tbl-del-btn{font-size:10px;font-weight:600;color:var(--red);padding:3px 8px;background:var(--red-l);border-radius:4px;white-space:nowrap}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
+.form-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);display:block;margin-bottom:4px}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-size:13px;color:var(--ink);background:var(--white)}
+.form-field input:focus,.form-field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.form-full{grid-column:1/-1}
+.save-btn{width:100%;padding:12px;background:var(--green);color:#fff;border-radius:var(--r-sm);font-size:14px;font-weight:700;margin-top:4px}
+.save-btn:active{opacity:.85}
+.cancel-btn{width:100%;padding:11px;background:var(--line2);color:var(--ink3);border-radius:var(--r-sm);font-size:13px;font-weight:600;margin-top:6px}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:1.5px dashed var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-l);width:100%;margin-bottom:12px}
+
+/* ── MODAL ────────────────────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-height:90dvh;overflow-y:auto;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:slideUp .22s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{font-size:20px;color:var(--ink3);padding:4px;line-height:1}
+
+/* ── MISC ─────────────────────────────────────────────────────────────── */
+.no-results{background:var(--line2);border-radius:var(--r-sm);padding:20px;text-align:center;color:var(--ink3);font-size:13px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--ink3)}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:.5}
+.empty-title{font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink2)}
+.empty-sub{font-size:12px;color:var(--ink3)}
+.toast{position:fixed;bottom:calc(var(--nav-h)+12px+env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;padding:9px 18px;border-radius:24px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:200}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="logo-mark">💳</div>
+    <div><div class="logo-name">PG Rate Finder</div><div class="logo-sub">Payment Gateway Lookup</div></div>
+  </div>
+  <div class="data-badge loading" id="dataBadge">Loading...</div>
+</div>
+
+<!-- HOME -->
+<div class="page active" id="pageHome">
+  <div class="home-hero">
+    <div class="home-hero-title">Find the right<br>payment gateway</div>
+    <div class="home-hero-sub">Search by vendor, card type, or amount</div>
+  </div>
+  <div class="search-wrap">
+    <div class="search-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+    <input class="search-input" id="globalSearch" type="text" placeholder="Search PG name, vendor, card type..." oninput="onGlobalSearch(this.value)">
+  </div>
+  <div id="searchResults" style="display:none">
+    <div class="results-header">
+      <button class="back-btn" onclick="clearSearch()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 12H5m7-7-7 7 7 7"/></svg>Back</button>
+      <div class="results-count" id="searchCount">0 results</div>
+    </div>
+    <div id="searchList"></div>
+  </div>
+  <div id="homeMain">
+    <div class="section-hd">Select Vendor</div>
+    <div class="vendor-grid" id="vendorGrid"></div>
+    <div class="section-hd">Quick Find</div>
+    <div class="quickfind-row">
+      <div class="qf-card">
+        <div class="qf-label">By Card Type</div>
+        <select class="qf-select" id="qfScheme"><option value="">Card scheme...</option><option value="VISA">VISA</option><option value="MASTERCARD">MasterCard</option><option value="RUPAY">RuPay</option><option value="AMEX">AMEX</option><option value="DINERS CLUB">Diners Club</option></select>
+        <button class="qf-btn" onclick="quickFindScheme()">Find →</button>
+      </div>
+      <div class="qf-card">
+        <div class="qf-label">By Gateway Type</div>
+        <select class="qf-select" id="qfGcat"><option value="">Category...</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="Transit">Transit</option><option value="General">General</option></select>
+        <button class="qf-btn" onclick="quickFindGcat()">Find →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RATE CARD -->
+<div class="page" id="pageRateCard">
+  <div id="rateCardContent"></div>
+</div>
+
+<!-- CARD FINDER -->
+<div class="page" id="pageCardFinder">
+  <div class="rc-vendor-banner" style="background:linear-gradient(135deg,#1e3a5f,#0f172a)">
+    <div class="rc-vendor-name">Card Finder</div>
+    <div class="rc-vendor-meta">Which gateways accept your card?</div>
+  </div>
+  <div class="section-hd">Card Scheme</div>
+  <div class="cf-scheme-grid">
+    <button class="cf-scheme-btn sel" data-s="ALL" onclick="cfSelectScheme('ALL',this)"><div class="cf-icon">🃏</div><div class="cf-name">All</div></button>
+    <button class="cf-scheme-btn" data-s="VISA" onclick="cfSelectScheme('VISA',this)"><div class="cf-icon">💳</div><div class="cf-name">VISA</div></button>
+    <button class="cf-scheme-btn" data-s="MASTERCARD" onclick="cfSelectScheme('MASTERCARD',this)"><div class="cf-icon">🔴</div><div class="cf-name">MasterCard</div></button>
+    <button class="cf-scheme-btn" data-s="RUPAY" onclick="cfSelectScheme('RUPAY',this)"><div class="cf-icon">🇮🇳</div><div class="cf-name">RuPay</div></button>
+    <button class="cf-scheme-btn" data-s="AMEX" onclick="cfSelectScheme('AMEX',this)"><div class="cf-icon">💼</div><div class="cf-name">AMEX</div></button>
+    <button class="cf-scheme-btn" data-s="DINERS CLUB" onclick="cfSelectScheme('DINERS CLUB',this)"><div class="cf-icon">💎</div><div class="cf-name">Diners</div></button>
+  </div>
+  <div class="cf-filters">
+    <div class="cf-filter-box"><div class="cf-filter-lbl">Card Category</div><select class="cf-filter-sel" id="cfCat" onchange="renderCardFinder()"><option value="ALL">All</option><option value="CONSUMER">Consumer</option><option value="BUSINESS">Business</option></select></div>
+    <div class="cf-filter-box"><div class="cf-filter-lbl">Gateway Category</div><select class="cf-filter-sel" id="cfGcat" onchange="renderCardFinder()"><option value="ALL">All</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="General">General</option></select></div>
+  </div>
+  <div class="amount-filter">
+    <div class="amount-filter-lbl">Transaction Amount (filter by max limit)</div>
+    <div class="amount-input-wrap"><span class="amount-prefix">₹</span><input class="amount-input" type="number" id="cfAmount" placeholder="e.g. 50000" oninput="renderCardFinder()"></div>
+  </div>
+  <div id="cfResults"></div>
+</div>
+
+<!-- ALL PGs -->
+<div class="page" id="pageAllPGs">
+  <div class="search-wrap">
+    <div class="search-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+    <input class="search-input" id="allpgSearch" type="text" placeholder="Search PG name..." oninput="renderAllPGs()">
+  </div>
+  <div class="allpg-filters">
+    <div class="allpg-filter"><label>Vendor</label><select id="allpgVendor" onchange="renderAllPGs()"><option value="ALL">All vendors</option></select></div>
+    <div class="allpg-filter"><label>Card Scheme</label><select id="allpgScheme" onchange="renderAllPGs()"><option value="ALL">All schemes</option><option value="VISA">VISA</option><option value="MASTERCARD">MasterCard</option><option value="RUPAY">RuPay</option><option value="AMEX">AMEX</option><option value="DINERS CLUB">Diners Club</option></select></div>
+    <div class="allpg-filter"><label>Gateway Category</label><select id="allpgGcat" onchange="renderAllPGs()"><option value="ALL">All</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="General">General</option></select></div>
+    <div class="allpg-filter"><label>Sort By</label><select id="allpgSort" onchange="renderAllPGs()"><option value="rate">Rate ↑</option><option value="rate_d">Rate ↓</option><option value="limit">Max Limit ↓</option><option value="vendor">Vendor A-Z</option></select></div>
+  </div>
+  <div id="allpgCount" class="results-count" style="margin-bottom:10px;display:inline-block"></div>
+  <div id="allpgList" style="margin-top:8px"></div>
+</div>
+
+<!-- ADMIN -->
+<div class="page" id="pageAdmin">
+  <div class="admin-lock" id="adminLock">
+    <div class="admin-lock-icon">🔐</div>
+    <div class="admin-lock-title">Admin Access</div>
+    <div class="admin-lock-sub">Enter the 4-digit PIN to manage PG data</div>
+    <input class="pin-input" type="password" inputmode="numeric" maxlength="4" id="pinInput" placeholder="••••" onkeydown="if(event.key==='Enter')unlockAdmin()">
+    <button class="unlock-btn" onclick="unlockAdmin()">Unlock</button>
+  </div>
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="atPG" onclick="switchAdminTab('PG')">📋 PG Rates</button>
+      <button class="admin-tab" id="atIB" onclick="switchAdminTab('IB')">🚫 Issuer Blocks</button>
+    </div>
+
+    <!-- PG RATES ADMIN -->
+    <div id="adminPGSection">
+      <button class="add-btn" onclick="openAddModal('PG')">＋ Add New PG Rate Row</button>
+      <div id="adminPGTableWrap">
+        <div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-title">Loading data...</div></div>
+      </div>
+    </div>
+
+    <!-- ISSUER BLOCKS ADMIN -->
+    <div id="adminIBSection" style="display:none">
+      <button class="add-btn" onclick="openAddModal('IB')">＋ Add Issuer Block</button>
+      <div id="adminIBTableWrap">
+        <div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-title">Loading data...</div></div>
+      </div>
+    </div>
+
+    <button onclick="lockAdmin()" style="width:100%;padding:12px;background:var(--line2);border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:8px;margin-top:4px">🔒 Lock Admin</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-tab active" id="tab-home" onclick="showPage('Home')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></button>
+  <button class="nav-tab" id="tab-cardFinder" onclick="showPage('CardFinder')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Card Find</span></button>
+  <button class="nav-tab" id="tab-allPGs" onclick="showPage('AllPGs')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>All PGs</span></button>
+  <button class="nav-tab" id="tab-admin" onclick="showPage('Admin')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg><span>Admin</span></button>
+</nav>
+
+<!-- EDIT/ADD MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title"><span id="modalTitle">Edit Row</span><button class="modal-close" onclick="closeModalDirect()">×</button></div>
+    <div id="modalFormBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG — set your deployed Vercel URL here after deploying
+// ══════════════════════════════════════════════════════════════════════════════
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:3000/api'
+  : '/api';  // same-origin on Vercel
+
+const ADMIN_PIN = '2580';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+let pgRates = [];       // active PG_RATES rows only (for users)
+let pgRatesAll = [];    // all rows including inactive (for admin)
+let issuerBlocks = [];  // active issuer blocks
+let issuerBlocksAll = [];
+let cfScheme = 'ALL';
+let activePage = 'Home';
+let adminUnlocked = false;
+let editingSheet = null;
+let editingRowIndex = null;
+
+const VENDOR_COLORS = {
+  'Instantmudra':'#2563eb','Greenpay':'#16a34a','Imperia':'#7c3aed',
+  'Masterpay':'#db2777','Paybiz':'#ea580c','Ikeda':'#0891b2',
+  'Pehabit':'#65a30d','Machpay':'#9333ea','Payswitch':'#0d9488',
+  'MOS':'#dc2626','Biz Solutions':'#b45309','Winnerpay':'#475569',
+  'SLPE':'#0369a1',
+};
+const GATEWAY_CATEGORIES = ['Education','Fastag','Travel','Utility','Insurance','Ecommerce','Transit','General','Government'];
+const AGGREGATORS = ['Cashfree','Razorpay','Easebuzz','Worldline','PayU','Juspay','CCAvenue','Atom','Paytm','Other'];
+const SCHEMES = ['VISA','MASTERCARD','RUPAY','AMEX','DINERS CLUB'];
+const CARD_CATS = ['CONSUMER','BUSINESS','GOVERNMENT','ALL'];
+const SETTLEMENTS = ['INSTANT','T+1','T+2'];
+
+function vc(v){ return VENDOR_COLORS[v]||'#334155'; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API CALLS
+// ══════════════════════════════════════════════════════════════════════════════
+async function apiFetch(path, opts={}) {
+  const res = await fetch(API_BASE + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function loadData() {
+  const badge = document.getElementById('dataBadge');
+  badge.textContent = 'Loading…';
+  badge.className = 'data-badge loading';
+  try {
+    const { data } = await apiFetch('/sheets');
+    processData(data);
+    badge.textContent = pgRates.length + ' PGs';
+    badge.className = 'data-badge fresh';
+  } catch(e) {
+    badge.textContent = 'Offline';
+    badge.className = 'data-badge';
+    showToast('Could not load data — check connection');
+  }
+}
+
+function processData(data) {
+  const pgRows = data.PG_RATES?.rows || [];
+  pgRatesAll = pgRows.filter(r => r['PG NAME'] && r['PG RATE (%)'] > 0 && r['CARD SCHEME'] && !r['CARD SCHEME'].includes('AFTER SWIPING'));
+  pgRates = pgRatesAll.filter(r => (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE');
+
+  const ibRows = data.ISSUER_BLOCKS?.rows || [];
+  issuerBlocksAll = ibRows.filter(r => r['VENDOR'] && r['ISSUER BANK']);
+  issuerBlocks = issuerBlocksAll.filter(r => (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE');
+
+  buildVendorGrid();
+  populateAllPGFilters();
+  renderAllPGs();
+  renderCardFinder();
+}
+
+async function apiWrite(sheet, rowIndex, values, action) {
+  return apiFetch('/sheets', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-admin-pin': ADMIN_PIN },
+    body: JSON.stringify({ sheet, rowIndex, values, action }),
+  });
+}
+
+async function apiToggleStatus(sheet, rowIndex, status) {
+  return apiFetch('/sheets', {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'x-admin-pin': ADMIN_PIN },
+    body: JSON.stringify({ sheet, rowIndex, status }),
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════════
+function showPage(name){
+  activePage = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  const pg = document.getElementById('page'+name);
+  if(pg) pg.classList.add('active');
+  const tabId = name==='RateCard' ? 'tab-home' : 'tab-'+name.charAt(0).toLowerCase()+name.slice(1);
+  const tab = document.getElementById(tabId);
+  if(tab) tab.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VENDOR GRID
+// ══════════════════════════════════════════════════════════════════════════════
+function buildVendorGrid(){
+  const vendors = [...new Set(pgRates.map(r=>r['VENDOR']))].sort();
+  document.getElementById('vendorGrid').innerHTML = vendors.map(v=>{
+    const pgNames = [...new Set(pgRates.filter(r=>r['VENDOR']===v).map(r=>r['PG NAME']))];
+    const count = pgRates.filter(r=>r['VENDOR']===v).length;
+    const c = vc(v);
+    return `<button class="vendor-chip" onclick="openVendorRateCard('${v}')">
+      <div style="width:3px;position:absolute;left:0;top:0;bottom:0;background:${c};border-radius:3px 0 0 3px"></div>
+      <div class="vc-name">${v}</div>
+      <div class="vc-meta">${pgNames.length} PGs · ${count} rates</div>
+    </button>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RATE CARD VIEW
+// ══════════════════════════════════════════════════════════════════════════════
+let rcVendor='',rcScheme='ALL',rcCat='ALL',rcGcat='ALL',rcSort='rate';
+
+function openVendorRateCard(vendor){
+  rcVendor=vendor; rcScheme='ALL'; rcCat='ALL'; rcGcat='ALL'; rcSort='rate';
+  showPage('RateCard'); renderRateCard();
+}
+
+function renderRateCard(){
+  const data = pgRates.filter(r=>r['VENDOR']===rcVendor);
+  const pgNames = [...new Set(data.map(r=>r['PG NAME']))];
+  const schemes = [...new Set(data.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
+  const gcats = [...new Set(data.map(r=>r['GATEWAY CATEGORY']).filter(Boolean))];
+  const color = vc(rcVendor);
+
+  let html = `
+    <button class="back-btn" style="margin-bottom:10px" onclick="showPage('Home')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 12H5m7-7-7 7 7 7"/></svg> All Vendors
+    </button>
+    <div class="rc-vendor-banner" style="background:linear-gradient(135deg,${color}dd,${color}88)">
+      <div class="rc-vendor-name">${rcVendor}</div>
+      <div class="rc-vendor-meta">${pgNames.length} gateways · ${data.length} rate entries</div>
+    </div>
+    <div class="chip-row">
+      <button class="fchip ${rcScheme==='ALL'?'active':''}" data-scheme="ALL" onclick="rcSetScheme('ALL',this)">All Cards</button>
+      ${schemes.map(s=>`<button class="fchip" data-scheme="${s}" onclick="rcSetScheme('${s}',this)">${schemeName(s)}</button>`).join('')}
+    </div>
+    <div class="chip-row">
+      <button class="fchip ${rcCat==='ALL'?'active':''}" data-cat="ALL" onclick="rcSetCat('ALL',this)">All</button>
+      <button class="fchip ${rcCat==='CONSUMER'?'active':''}" data-cat="CONSUMER" onclick="rcSetCat('CONSUMER',this)">Consumer</button>
+      <button class="fchip ${rcCat==='BUSINESS'?'active':''}" data-cat="BUSINESS" onclick="rcSetCat('BUSINESS',this)">Business</button>
+    </div>
+    ${gcats.length ? `<div class="chip-row">
+      <button class="fchip ${rcGcat==='ALL'?'active':''}" data-gcat="ALL" onclick="rcSetGcat('ALL',this)">All Types</button>
+      ${gcats.map(g=>`<button class="fchip ${rcGcat===g?'active':''}" data-gcat="${g}" onclick="rcSetGcat('${g}',this)">${g}</button>`).join('')}
+    </div>`:''}
+    <div class="sort-row">
+      <span class="sort-label">Sort:</span>
+      <button class="sort-btn ${rcSort==='rate'?'active':''}" onclick="rcSetSort('rate',this)">Rate ↑</button>
+      <button class="sort-btn ${rcSort==='rate_d'?'active':''}" onclick="rcSetSort('rate_d',this)">Rate ↓</button>
+      <button class="sort-btn ${rcSort==='limit'?'active':''}" onclick="rcSetSort('limit',this)">Limit ↓</button>
+    </div>`;
+
+  let filtered = data.filter(r=>{
+    if(rcScheme!=='ALL' && !r['CARD SCHEME'].includes(rcScheme)) return false;
+    if(rcCat!=='ALL' && !r['CARD CATEGORY'].includes(rcCat)) return false;
+    if(rcGcat!=='ALL' && r['GATEWAY CATEGORY']!==rcGcat) return false;
+    return true;
+  });
+  if(rcSort==='rate')   filtered.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
+  if(rcSort==='rate_d') filtered.sort((a,b)=>b['PG RATE (%)']-a['PG RATE (%)']);
+  if(rcSort==='limit')  filtered.sort((a,b)=>b['MAX AMOUNT (₹)']-a['MAX AMOUNT (₹)']);
+
+  const grouped = {};
+  filtered.forEach(r=>{ if(!grouped[r['PG NAME']]) grouped[r['PG NAME']]={rows:[],rep:r}; grouped[r['PG NAME']].rows.push(r); });
+
+  if(!Object.keys(grouped).length){ html+=`<div class="no-results">No gateways match this filter</div>`; }
+  else {
+    Object.entries(grouped).forEach(([pgName,{rows,rep}])=>{
+      const minRate=Math.min(...rows.map(r=>r['PG RATE (%)']));
+      const maxLimit=Math.max(...rows.map(r=>parseFloat(r['MAX AMOUNT (₹)'])||0));
+      const minLimit=Math.min(...rows.map(r=>parseFloat(r['MIN AMOUNT (₹)'])||Infinity));
+      const allSchemes=[...new Set(rows.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
+      const blocks=issuerBlocks.filter(b=>b['VENDOR']===rcVendor&&(b['PG NAME']===pgName||b['PG NAME']==='ALL')&&b['IS_BLOCKED']==='YES');
+      const gcat=rep['GATEWAY CATEGORY']||'';
+      const agg=rep['PAYMENT GATEWAY AGGREGATOR']||'';
+      const rupayLim=parseFloat(rep['RUPAY LIMIT (₹)'])||0;
+
+      html+=`<div class="pg-card" data-vendor="${rcVendor}">
+        <div class="pgc-head" onclick="togglePGDetail(this)">
+          <div style="flex:1">
+            <div class="pgc-name">${pgName}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+              ${allSchemes.map(schemeBadge).join('')}
+              ${gcat?`<span class="gcat-tag">📂 ${gcat}</span>`:''}
+              ${agg?`<span class="agg-tag">⚡ ${agg}</span>`:''}
+            </div>
+            ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']+' ('+b['CARD SCHEME']+')').join(', ')} restricted</div>`:''}
+          </div>
+          <div class="pgc-category">${rep['SETTLEMENT TYPE']||'INSTANT'}</div>
+        </div>
+        <div class="pgc-rates">
+          <div class="pgc-rate-box"><div class="pgc-rate-lbl">PG Rate</div><div class="pgc-rate-val rate">${fmtRate(minRate)}</div></div>
+          <div class="pgc-rate-box"><div class="pgc-rate-lbl">Swipe</div><div class="pgc-rate-val swipe">${fmtRate(Math.min(...rows.map(r=>parseFloat(r['SWIPE RATE (%)'])||99).filter(v=>v<99)))}</div></div>
+          <div class="pgc-rate-box"><div class="pgc-rate-lbl">Max Limit</div><div class="pgc-rate-val limit">${fmtAmt(maxLimit)}</div></div>
+        </div>
+        <div class="pgc-detail">
+          <div class="pgc-detail-grid">
+            <div><div class="pgc-di-label">Min Amount</div><div class="pgc-di-val">₹${fmtNum(minLimit===Infinity?0:minLimit)}</div></div>
+            <div><div class="pgc-di-label">Settlement</div><div class="pgc-di-val">${rep['SETTLEMENT TYPE']||'INSTANT'}</div></div>
+            ${rupayLim?`<div><div class="pgc-di-label">RuPay Limit</div><div class="pgc-di-val">₹${fmtNum(rupayLim)}</div></div>`:''}
+            ${agg?`<div><div class="pgc-di-label">Aggregator</div><div class="pgc-di-val">${agg}</div></div>`:''}
+          </div>
+          <div style="margin-top:8px">
+            <div class="pgc-di-label" style="margin-bottom:5px">Rate by Card Type</div>
+            ${rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px">
+              <div style="display:flex;gap:5px;align-items:center">${schemeBadge(r['CARD SCHEME'])}<span style="color:var(--ink2)">${r['CARD CATEGORY']||''}</span></div>
+              <div style="display:flex;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${fmtRate(r['PG RATE (%)'])}</span>
+                <span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtRate(r['SWIPE RATE (%)'])}</span>
+                <span style="font-family:'DM Mono',monospace;color:var(--green);font-size:11px">₹${fmtNum(r['MAX AMOUNT (₹)'])}</span>
+              </div>
+            </div>`).join('')}
+          </div>
+          ${blocks.length?`<div style="margin-top:10px;padding:8px;background:var(--red-l);border-radius:6px">
+            <div class="pgc-di-label" style="color:var(--red);margin-bottom:4px">⚠ Issuer Restrictions</div>
+            ${blocks.map(b=>`<div style="font-size:11px;color:var(--red);padding:2px 0">${b['CARD SCHEME']} · ${b['ISSUER BANK']}${b['NOTES']?' · '+b['NOTES']:''}</div>`).join('')}
+          </div>`:''}
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById('rateCardContent').innerHTML = html;
+  // re-apply active chip styles after innerHTML
+  document.querySelectorAll('#pageRateCard .fchip[data-scheme]').forEach(b=>{ if(b.dataset.scheme===rcScheme) b.classList.add('active'); });
+}
+
+function rcSetScheme(s,btn){ rcScheme=s; document.querySelectorAll('#pageRateCard .fchip[data-scheme]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRateCard(); }
+function rcSetCat(c,btn){ rcCat=c; document.querySelectorAll('#pageRateCard .fchip[data-cat]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRateCard(); }
+function rcSetGcat(g,btn){ rcGcat=g; document.querySelectorAll('#pageRateCard .fchip[data-gcat]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRateCard(); }
+function rcSetSort(s,btn){ rcSort=s; document.querySelectorAll('#pageRateCard .sort-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRateCard(); }
+function togglePGDetail(head){ head.parentElement.querySelector('.pgc-detail').classList.toggle('open'); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GLOBAL SEARCH
+// ══════════════════════════════════════════════════════════════════════════════
+function onGlobalSearch(q){
+  const qLow=q.toLowerCase().trim();
+  document.getElementById('homeMain').style.display = qLow?'none':'';
+  document.getElementById('searchResults').style.display = qLow?'block':'none';
+  if(!qLow) return;
+
+  const matched=pgRates.filter(r=>
+    r['PG NAME'].toLowerCase().includes(qLow)||r['VENDOR'].toLowerCase().includes(qLow)||
+    (r['CARD SCHEME']||'').toLowerCase().includes(qLow)||(r['CARD CATEGORY']||'').toLowerCase().includes(qLow)||
+    (r['GATEWAY CATEGORY']||'').toLowerCase().includes(qLow)||(r['PAYMENT GATEWAY AGGREGATOR']||'').toLowerCase().includes(qLow)
+  );
+  document.getElementById('searchCount').textContent=matched.length+' results';
+
+  const groups={};
+  matched.forEach(r=>{ const k=r['VENDOR']+'|||'+r['PG NAME']; if(!groups[k]) groups[k]={rows:[],rep:r}; groups[k].rows.push(r); });
+
+  document.getElementById('searchList').innerHTML = Object.values(groups).slice(0,40).map(({rows,rep})=>{
+    const minRate=Math.min(...rows.map(r=>r['PG RATE (%)']));
+    const maxLimit=Math.max(...rows.map(r=>parseFloat(r['MAX AMOUNT (₹)'])||0));
+    const blocks=issuerBlocks.filter(b=>b['VENDOR']===rep['VENDOR']&&(b['PG NAME']===rep['PG NAME']||b['PG NAME']==='ALL')&&b['IS_BLOCKED']==='YES');
+    const schemes=[...new Set(rows.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
+    const c=vc(rep['VENDOR']);
+    return `<div class="pg-card" style="border-left:3px solid ${c}">
+      <div class="pgc-head" onclick="togglePGDetail(this)">
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:700;color:${c};margin-bottom:2px">${rep['VENDOR']}</div>
+          <div class="pgc-name">${rep['PG NAME']}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${schemes.map(schemeBadge).join('')}
+            ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
+          </div>
+          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']+' ('+b['CARD SCHEME']+')').join(', ')} restricted</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:600;color:var(--accent)">${fmtRate(minRate)}</div>
+          <div style="font-size:10px;color:var(--ink3)">Max ${fmtAmt(maxLimit)}</div>
+        </div>
+      </div>
+      <div class="pgc-detail">
+        ${rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px">
+          <div>${schemeBadge(r['CARD SCHEME'])} <span style="color:var(--ink2)">${r['CARD CATEGORY']}</span></div>
+          <div style="display:flex;gap:8px">
+            <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${fmtRate(r['PG RATE (%)'])}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtRate(r['SWIPE RATE (%)'])}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--green);font-size:11px">₹${fmtNum(r['MAX AMOUNT (₹)'])}</span>
+          </div>
+        </div>`).join('')}
+        ${blocks.length?`<div style="margin-top:10px;padding:8px;background:var(--red-l);border-radius:6px">
+          <div class="pgc-di-label" style="color:var(--red);margin-bottom:4px">⚠ Issuer Restrictions</div>
+          ${blocks.map(b=>`<div style="font-size:11px;color:var(--red)">${b['CARD SCHEME']} · ${b['ISSUER BANK']}${b['NOTES']?' · '+b['NOTES']:''}</div>`).join('')}
+        </div>`:''}
+        <button onclick="openVendorRateCard('${rep['VENDOR']}')" style="width:100%;margin-top:10px;padding:8px;background:var(--accent-l);color:var(--accent);border-radius:6px;font-size:12px;font-weight:700">Open full rate card →</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="no-results">No matches found</div>';
+}
+function clearSearch(){ document.getElementById('globalSearch').value=''; onGlobalSearch(''); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// QUICK FIND
+// ══════════════════════════════════════════════════════════════════════════════
+function quickFindScheme(){
+  const s=document.getElementById('qfScheme').value;
+  if(!s){showToast('Select a card scheme');return;}
+  cfScheme=s;
+  document.querySelectorAll('.cf-scheme-btn').forEach(b=>b.classList.remove('sel'));
+  const btn=document.querySelector(`.cf-scheme-btn[data-s="${s}"]`);
+  if(btn) btn.classList.add('sel');
+  renderCardFinder(); showPage('CardFinder');
+}
+function quickFindGcat(){
+  const g=document.getElementById('qfGcat').value;
+  if(!g){showToast('Select a gateway category');return;}
+  document.getElementById('cfGcat').value=g;
+  cfScheme='ALL';
+  document.querySelectorAll('.cf-scheme-btn').forEach(b=>b.classList.remove('sel'));
+  document.querySelector('.cf-scheme-btn[data-s="ALL"]').classList.add('sel');
+  renderCardFinder(); showPage('CardFinder');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CARD FINDER
+// ══════════════════════════════════════════════════════════════════════════════
+function cfSelectScheme(s,btn){ cfScheme=s; document.querySelectorAll('.cf-scheme-btn').forEach(b=>b.classList.remove('sel')); if(btn) btn.classList.add('sel'); renderCardFinder(); }
+
+function renderCardFinder(){
+  const cat=document.getElementById('cfCat').value;
+  const gcat=document.getElementById('cfGcat').value;
+  const amount=parseFloat(document.getElementById('cfAmount').value)||0;
+  let filtered=pgRates.filter(r=>{
+    if(cfScheme!=='ALL'&&!r['CARD SCHEME'].includes(cfScheme)) return false;
+    if(cat!=='ALL'&&!r['CARD CATEGORY'].includes(cat)) return false;
+    if(gcat!=='ALL'&&r['GATEWAY CATEGORY']!==gcat) return false;
+    if(amount>0&&parseFloat(r['MAX AMOUNT (₹)'])>0&&parseFloat(r['MAX AMOUNT (₹)'])<amount) return false;
+    return true;
+  });
+  filtered.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
+  const groups={};
+  filtered.forEach(r=>{ const k=r['VENDOR']+'|||'+r['PG NAME']; if(!groups[k]) groups[k]={rows:[],rep:r}; groups[k].rows.push(r); });
+  const sortedGroups=Object.values(groups).sort((a,b)=>Math.min(...a.rows.map(r=>r['PG RATE (%)']))-Math.min(...b.rows.map(r=>r['PG RATE (%)'])));
+  const container=document.getElementById('cfResults');
+  if(!sortedGroups.length){ container.innerHTML='<div class="no-results">No gateways match. Adjust filters.</div>'; return; }
+  container.innerHTML=`<div style="margin-bottom:8px" class="results-count">${sortedGroups.length} gateways · cheapest first</div>`+
+  sortedGroups.map(({rows,rep})=>{
+    const minRate=Math.min(...rows.map(r=>r['PG RATE (%)']));
+    const maxLimit=Math.max(...rows.map(r=>parseFloat(r['MAX AMOUNT (₹)'])||0));
+    const blocks=issuerBlocks.filter(b=>b['VENDOR']===rep['VENDOR']&&(b['PG NAME']===rep['PG NAME']||b['PG NAME']==='ALL')&&b['IS_BLOCKED']==='YES');
+    const schemes=[...new Set(rows.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
+    const c=vc(rep['VENDOR']);
+    return `<div class="pg-card" style="border-left:3px solid ${c}">
+      <div class="pgc-head" onclick="togglePGDetail(this)">
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:700;color:${c};margin-bottom:2px">${rep['VENDOR']}</div>
+          <div class="pgc-name">${rep['PG NAME']}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${schemes.map(schemeBadge).join('')}
+            ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
+            ${rep['PAYMENT GATEWAY AGGREGATOR']?`<span class="agg-tag">⚡ ${rep['PAYMENT GATEWAY AGGREGATOR']}</span>`:''}
+          </div>
+          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:3px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']).join(', ')} restricted</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--accent)">${fmtRate(minRate)}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">Max ${fmtAmt(maxLimit)}</div>
+        </div>
+      </div>
+      <div class="pgc-detail">
+        ${rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px">
+          <div>${schemeBadge(r['CARD SCHEME'])} <span style="color:var(--ink3)">${r['CARD CATEGORY']}</span></div>
+          <div style="display:flex;gap:8px">
+            <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${fmtRate(r['PG RATE (%)'])}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--ink3);font-size:11px">Max ₹${fmtNum(r['MAX AMOUNT (₹)'])}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ALL PGs
+// ══════════════════════════════════════════════════════════════════════════════
+function populateAllPGFilters(){
+  const vs=[...new Set(pgRates.map(r=>r['VENDOR']))].sort();
+  document.getElementById('allpgVendor').innerHTML='<option value="ALL">All vendors</option>'+vs.map(v=>`<option value="${v}">${v}</option>`).join('');
+}
+function renderAllPGs(){
+  const q=(document.getElementById('allpgSearch').value||'').toLowerCase();
+  const vendor=document.getElementById('allpgVendor').value;
+  const scheme=document.getElementById('allpgScheme').value;
+  const gcat=document.getElementById('allpgGcat').value;
+  const sort=document.getElementById('allpgSort').value;
+  let data=pgRates.filter(r=>{
+    if(vendor!=='ALL'&&r['VENDOR']!==vendor) return false;
+    if(scheme!=='ALL'&&!(r['CARD SCHEME']||'').includes(scheme)) return false;
+    if(gcat!=='ALL'&&r['GATEWAY CATEGORY']!==gcat) return false;
+    if(q&&!(r['PG NAME']||'').toLowerCase().includes(q)&&!(r['VENDOR']||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(sort==='rate')   data.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
+  if(sort==='rate_d') data.sort((a,b)=>b['PG RATE (%)']-a['PG RATE (%)']);
+  if(sort==='limit')  data.sort((a,b)=>b['MAX AMOUNT (₹)']-a['MAX AMOUNT (₹)']);
+  if(sort==='vendor') data.sort((a,b)=>a['VENDOR'].localeCompare(b['VENDOR']));
+
+  const groups={};
+  data.forEach(r=>{ const k=r['VENDOR']+'|||'+r['PG NAME']; if(!groups[k]) groups[k]={rows:[],rep:r}; groups[k].rows.push(r); });
+  document.getElementById('allpgCount').textContent=data.length+' records';
+  const c=document.getElementById('allpgList');
+  if(!Object.keys(groups).length){ c.innerHTML='<div class="no-results">No results</div>'; return; }
+  c.innerHTML=Object.values(groups).map(({rows,rep})=>{
+    const minR=Math.min(...rows.map(r=>r['PG RATE (%)']));
+    const maxL=Math.max(...rows.map(r=>parseFloat(r['MAX AMOUNT (₹)'])||0));
+    const vc2=vc(rep['VENDOR']);
+    const schemes=[...new Set(rows.flatMap(r=>r['CARD SCHEME'].split(',').map(s=>s.trim()).filter(Boolean)))];
+    return `<div class="pg-card" style="border-left:3px solid ${vc2}" onclick="openVendorRateCard('${rep['VENDOR']}')">
+      <div class="pgc-head">
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:700;color:${vc2};margin-bottom:1px">${rep['VENDOR']}</div>
+          <div class="pgc-name">${rep['PG NAME']}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${schemes.map(schemeBadge).join('')}
+            ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
+            ${rep['PAYMENT GATEWAY AGGREGATOR']?`<span class="agg-tag">⚡ ${rep['PAYMENT GATEWAY AGGREGATOR']}</span>`:''}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--accent)">${fmtRate(minR)}</div>
+          <div style="font-size:10px;color:var(--ink3)">₹${fmtNum(maxL)} max</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN
+// ══════════════════════════════════════════════════════════════════════════════
+function unlockAdmin(){
+  if(document.getElementById('pinInput').value===ADMIN_PIN){
+    document.getElementById('adminLock').style.display='none';
+    document.getElementById('adminPanel').classList.add('open');
+    adminUnlocked=true;
+    renderAdminPGTable();
+    renderAdminIBTable();
+    showToast('Admin unlocked');
+  } else { showToast('Incorrect PIN'); document.getElementById('pinInput').value=''; }
+}
+function lockAdmin(){
+  document.getElementById('adminLock').style.display='block';
+  document.getElementById('adminPanel').classList.remove('open');
+  document.getElementById('pinInput').value='';
+  adminUnlocked=false;
+}
+
+function switchAdminTab(tab){
+  document.getElementById('adminPGSection').style.display = tab==='PG'?'block':'none';
+  document.getElementById('adminIBSection').style.display = tab==='IB'?'block':'none';
+  document.getElementById('atPG').className = 'admin-tab'+(tab==='PG'?' active':'');
+  document.getElementById('atIB').className = 'admin-tab'+(tab==='IB'?' active':'');
+}
+
+// ── PG Rates Admin Table ──────────────────────────────────────────────────────
+function renderAdminPGTable(){
+  const wrap = document.getElementById('adminPGTableWrap');
+  if(!pgRatesAll.length){ wrap.innerHTML='<div class="no-results">No data loaded</div>'; return; }
+  const cols = ['VENDOR','PG NAME','GATEWAY CATEGORY','PAYMENT GATEWAY AGGREGATOR','CARD SCHEME','CARD CATEGORY','PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)','STATUS'];
+  wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr></thead>
+    <tbody>${pgRatesAll.map((r,i)=>{
+      const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
+      return `<tr class="${inactive?'inactive':''}">
+        ${cols.map(c=>`<td>${c==='STATUS'?
+          `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('PG',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
+          (r[c]||'—')}</td>`).join('')}
+        <td style="white-space:nowrap">
+          <button class="tbl-edit-btn" onclick="openEditModal('PG',${r._rowIndex})">Edit</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ── Issuer Blocks Admin Table ─────────────────────────────────────────────────
+function renderAdminIBTable(){
+  const wrap = document.getElementById('adminIBTableWrap');
+  if(!issuerBlocksAll.length){ wrap.innerHTML='<div class="no-results">No issuer blocks recorded</div>'; return; }
+  const cols=['VENDOR','PG NAME','CARD SCHEME','ISSUER BANK','IS_BLOCKED','BLOCK TYPE','AFFECTED CATEGORY','NOTES','STATUS'];
+  wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr></thead>
+    <tbody>${issuerBlocksAll.map((r,i)=>{
+      const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
+      return `<tr class="${inactive?'inactive':''}">
+        ${cols.map(c=>`<td>${c==='STATUS'?
+          `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('IB',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
+          (r[c]||'—')}</td>`).join('')}
+        <td><button class="tbl-edit-btn" onclick="openEditModal('IB',${r._rowIndex})">Edit</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ── Status toggle ─────────────────────────────────────────────────────────────
+async function toggleStatus(sheet, rowIndex, newStatus){
+  try {
+    await apiToggleStatus(sheet==='PG'?'PG_RATES':'ISSUER_BLOCKS', rowIndex, newStatus);
+    showToast(newStatus==='ACTIVE'?'Enabled ✓':'Disabled');
+    await loadData();
+    if(adminUnlocked){ renderAdminPGTable(); renderAdminIBTable(); }
+  } catch(e){ showToast('Save failed: '+e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL — ADD / EDIT
+// ══════════════════════════════════════════════════════════════════════════════
+function pgFormHTML(data={}) {
+  const f = (label,id,type,opts='',val='')=>
+    `<div class="form-field"><label>${label}</label>${
+      type==='select'?`<select id="mf_${id}">${opts}</select>`:
+      `<input type="${type}" id="mf_${id}" value="${val}" placeholder="${label}">`
+    }</div>`;
+  const sel = (id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+
+  return `<div class="form-grid">
+    <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors" placeholder="Vendor name"><datalist id="dl_vendors">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
+    <div class="form-field form-full"><label>PG NAME</label><input id="mf_pgname" value="${data['PG NAME']||''}" placeholder="Gateway name"></div>
+    <div class="form-field"><label>GATEWAY CATEGORY</label>${sel('gcat',GATEWAY_CATEGORIES,data['GATEWAY CATEGORY']||'')}</div>
+    <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'')}</div>
+    <div class="form-field"><label>CARD SCHEME</label>${sel('scheme',SCHEMES,data['CARD SCHEME']||'VISA')}</div>
+    <div class="form-field"><label>CARD CATEGORY</label>${sel('cardcat',CARD_CATS,data['CARD CATEGORY']||'CONSUMER')}</div>
+    <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)')||''}" placeholder="e.g. 1.60"></div>
+    <div class="form-field"><label>SWIPE RATE (%)</label><input type="number" step="0.01" id="mf_swipe" value="${data['SWIPE RATE (%)']||''}" placeholder="e.g. 2.30"></div>
+    <div class="form-field"><label>MIN AMOUNT (₹)</label><input type="number" id="mf_min" value="${data['MIN AMOUNT (₹)']||''}" placeholder="e.g. 100"></div>
+    <div class="form-field"><label>MAX AMOUNT (₹)</label><input type="number" id="mf_max" value="${data['MAX AMOUNT (₹)']||''}" placeholder="e.g. 50000"></div>
+    <div class="form-field"><label>RUPAY LIMIT (₹)</label><input type="number" id="mf_rupay" value="${data['RUPAY LIMIT (₹)']||''}" placeholder="Optional"></div>
+    <div class="form-field"><label>SETTLEMENT TYPE</label>${sel('settle',SETTLEMENTS,data['SETTLEMENT TYPE']||'INSTANT')}</div>
+    <div class="form-field"><label>CATEGORY (label)</label><input id="mf_cat" value="${data['CATEGORY']||''}" placeholder="e.g. SPECIAL PG"></div>
+    <div class="form-field"><label>STATUS</label>${sel('status',['ACTIVE','INACTIVE'],data['STATUS']||'ACTIVE')}</div>
+  </div>
+  <button class="save-btn" onclick="savePGRow()">Save</button>
+  <button class="cancel-btn" onclick="closeModalDirect()">Cancel</button>`;
+}
+
+function ibFormHTML(data={}) {
+  const sel=(id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  return `<div class="form-grid">
+    <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors2" placeholder="Vendor"><datalist id="dl_vendors2">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
+    <div class="form-field"><label>PG NAME</label><input id="mf_pgname" value="${data['PG NAME']||''}" placeholder="PG or ALL"></div>
+    <div class="form-field"><label>CARD SCHEME</label>${sel('scheme',[...SCHEMES,'ALL'],data['CARD SCHEME']||'VISA')}</div>
+    <div class="form-field"><label>ISSUER BANK</label><input id="mf_bank" value="${data['ISSUER BANK']||''}" placeholder="e.g. HDFC, ICICI"></div>
+    <div class="form-field"><label>IS_BLOCKED</label>${sel('blocked',['YES','NO'],data['IS_BLOCKED']||'YES')}</div>
+    <div class="form-field"><label>BLOCK TYPE</label>${sel('btype',['FULL','PARTIAL',''],data['BLOCK TYPE']||'FULL')}</div>
+    <div class="form-field"><label>AMOUNT THRESHOLD (₹)</label><input type="number" id="mf_threshold" value="${data['AMOUNT THRESHOLD (₹)']||''}" placeholder="For PARTIAL only"></div>
+    <div class="form-field"><label>AFFECTED CATEGORY</label>${sel('affcat',['ALL','CONSUMER','BUSINESS'],data['AFFECTED CATEGORY']||'ALL')}</div>
+    <div class="form-field form-full"><label>NOTES</label><input id="mf_notes" value="${data['NOTES']||''}" placeholder="Optional context"></div>
+    <div class="form-field"><label>LAST VERIFIED DATE</label><input id="mf_date" value="${data['LAST VERIFIED DATE']||new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}" placeholder="DD-MMM-YYYY"></div>
+    <div class="form-field"><label>STATUS</label>${sel('status',['ACTIVE','INACTIVE'],data['STATUS']||'ACTIVE')}</div>
+  </div>
+  <button class="save-btn" onclick="saveIBRow()">Save</button>
+  <button class="cancel-btn" onclick="closeModalDirect()">Cancel</button>`;
+}
+
+function openAddModal(type){
+  editingSheet=type; editingRowIndex=null;
+  document.getElementById('modalTitle').textContent = type==='PG'?'Add New PG Rate Row':'Add Issuer Block';
+  document.getElementById('modalFormBody').innerHTML = type==='PG'?pgFormHTML():ibFormHTML();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function openEditModal(type, rowIndex){
+  editingSheet=type; editingRowIndex=rowIndex;
+  const data = type==='PG' ? pgRatesAll.find(r=>r._rowIndex===rowIndex) : issuerBlocksAll.find(r=>r._rowIndex===rowIndex);
+  document.getElementById('modalTitle').textContent = type==='PG'?'Edit PG Rate Row':'Edit Issuer Block';
+  document.getElementById('modalFormBody').innerHTML = type==='PG'?pgFormHTML(data||{}):ibFormHTML(data||{});
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e){ if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+function g(id){ const el=document.getElementById('mf_'+id); return el?el.value.trim():''; }
+
+async function savePGRow(){
+  const values = [
+    g('vendor'),g('pgname'),g('gcat'),g('agg'),g('cat'),g('settle'),
+    g('scheme'),g('cardcat'),g('pgrate'),g('swipe'),g('min'),g('max'),g('rupay'),
+    g('status'),''
+  ];
+  if(!values[0]||!values[1]||!values[8]){ showToast('Vendor, PG Name and Rate are required'); return; }
+  try {
+    await apiWrite('PG_RATES', editingRowIndex, values, editingRowIndex===null?'add':'update');
+    closeModalDirect(); showToast('Saved ✓'); await loadData();
+    if(adminUnlocked) renderAdminPGTable();
+  } catch(e){ showToast('Save failed: '+e.message); }
+}
+async function saveIBRow(){
+  const values=[g('vendor'),g('pgname'),g('scheme'),g('bank'),g('blocked'),g('btype'),g('threshold'),g('affcat'),g('notes'),g('date'),g('status')];
+  if(!values[0]||!values[3]){ showToast('Vendor and Issuer Bank are required'); return; }
+  try {
+    await apiWrite('ISSUER_BLOCKS', editingRowIndex, values, editingRowIndex===null?'add':'update');
+    closeModalDirect(); showToast('Saved ✓'); await loadData();
+    if(adminUnlocked) renderAdminIBTable();
+  } catch(e){ showToast('Save failed: '+e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function fmtRate(v){ if(!v&&v!==0) return '—'; return parseFloat(v).toFixed(2)+'%'; }
+function fmtAmt(v){ if(!v) return '—'; if(v>=100000) return '₹'+(v/100000).toFixed(1)+'L'; if(v>=1000) return '₹'+(v/1000).toFixed(0)+'K'; return '₹'+v; }
+function fmtNum(v){ if(!v) return '—'; return Number(v).toLocaleString('en-IN'); }
+function schemeName(s){
+  if(!s) return s;
+  if(s.includes('VISA')&&s.includes('MASTER')&&s.includes('RUPAY')) return 'V+MC+RuPay';
+  if(s.includes('VISA')&&s.includes('MASTER')) return 'VISA+MC';
+  if(s==='MASTERCARD') return 'MasterCard';
+  if(s==='RUPAY') return 'RuPay';
+  if(s==='DINERS CLUB') return 'Diners';
+  return s;
+}
+function schemeBadge(s){
+  if(!s) return '';
+  const parts=s.split(',').map(x=>x.trim()).filter(Boolean);
+  if(parts.length>2) return `<span class="sbadge sbadge-multi">${parts.length} schemes</span>`;
+  return parts.map(p=>{
+    const cls=p.includes('VISA')?'sbadge-visa':p.includes('MASTER')?'sbadge-mc':p==='RUPAY'?'sbadge-rupay':p==='AMEX'?'sbadge-amex':p.includes('DINERS')?'sbadge-diners':'sbadge-multi';
+    const label=p==='MASTERCARD'?'MC':p==='RUPAY'?'RuPay':p==='DINERS CLUB'?'Diners':p;
+    return `<span class="sbadge ${cls}">${label}</span>`;
+  }).join('');
+}
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════════════════
+loadData();
+</script>
+</body>
+</html>

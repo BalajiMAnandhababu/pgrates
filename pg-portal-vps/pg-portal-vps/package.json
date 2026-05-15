@@ -1,0 +1,19 @@
+{
+  "name": "pg-rate-portal",
+  "version": "1.0.0",
+  "description": "PG Rate Lookup Portal — pgrates.unifiedpaygate.com",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "googleapis": "^140.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
