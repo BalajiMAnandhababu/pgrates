@@ -176,8 +176,8 @@ app.get('*', (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`✓ PG Rate Portal running on http://127.0.0.1:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✓ PG Rate Portal running on http://0.0.0.0:${PORT}`);
   console.log(`  Sheet ID : ${SHEET_ID ? SHEET_ID.slice(0,12)+'...' : 'NOT SET'}`);
   console.log(`  Admin PIN: ${ADMIN_PIN}`);
 });
