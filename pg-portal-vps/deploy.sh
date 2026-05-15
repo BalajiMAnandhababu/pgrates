@@ -5,32 +5,13 @@
 
 set -e  # exit on any error
 
-REPO_URL="https://github.com/BalajiMAnandhababu/pgrates.git"
-REPO_DIR="/opt/pgrates"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo ""
 echo "════════════════════════════════════════════"
 echo "  PG Rate Portal — VPS Deployment Script"
 echo "  pgrates.unifiedpaygate.com"
 echo "════════════════════════════════════════════"
-echo ""
-
-# ── 0. Clone or update repo from GitHub ──────────────────────────────────────
-if ! command -v git &>/dev/null; then
-  echo "→ Installing git..."
-  apt-get install -y git
-fi
-
-if [ -d "$REPO_DIR/.git" ]; then
-  echo "→ Updating repo from GitHub..."
-  git -C "$REPO_DIR" pull
-else
-  echo "→ Cloning repo from GitHub..."
-  git clone "$REPO_URL" "$REPO_DIR"
-fi
-
-SCRIPT_DIR="$REPO_DIR/pg-portal-vps"
-echo "✓ Source ready at $SCRIPT_DIR"
 echo ""
 
 # ── 1. Install Node.js 20 (if not installed) ─────────────────────────────────
@@ -136,7 +117,11 @@ certbot --nginx -d pgrates.unifiedpaygate.com --non-interactive --agree-tos \
 # ── 10. Start app with PM2 ────────────────────────────────────────────────────
 echo "→ Starting app with PM2..."
 cd /var/www/pg-portal
-pm2 start ecosystem.config.js
+if pm2 list | grep -q "pg-portal"; then
+  pm2 restart pg-portal
+else
+  pm2 start ecosystem.config.js
+fi
 pm2 save
 
 # Make PM2 start on reboot
