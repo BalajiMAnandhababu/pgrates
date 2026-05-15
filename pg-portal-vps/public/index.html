@@ -294,8 +294,8 @@ input,select,textarea{font-family:inherit;outline:none}
     <button class="cf-scheme-btn" data-s="DINERS CLUB" onclick="cfSelectScheme('DINERS CLUB',this)"><div class="cf-icon">💎</div><div class="cf-name">Diners</div></button>
   </div>
   <div class="cf-filters">
-    <div class="cf-filter-box"><div class="cf-filter-lbl">Card Category</div><select class="cf-filter-sel" id="cfCat" onchange="renderCardFinder()"><option value="ALL">All</option><option value="CONSUMER">Consumer</option><option value="BUSINESS">Business</option></select></div>
     <div class="cf-filter-box"><div class="cf-filter-lbl">Gateway Category</div><select class="cf-filter-sel" id="cfGcat" onchange="renderCardFinder()"><option value="ALL">All</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="General">General</option></select></div>
+    <div class="cf-filter-box"><div class="cf-filter-lbl">Card Category</div><select class="cf-filter-sel" id="cfCat" onchange="renderCardFinder()"><option value="ALL">All</option><option value="CONSUMER">Consumer</option><option value="BUSINESS">Business</option></select></div>
   </div>
   <div class="amount-filter">
     <div class="amount-filter-lbl">Transaction Amount (filter by max limit)</div>
@@ -304,6 +304,9 @@ input,select,textarea{font-family:inherit;outline:none}
   <div class="amount-filter">
     <div class="amount-filter-lbl">Issuer Bank — show gateways where this bank's cards work</div>
     <div class="amount-input-wrap"><input class="amount-input" type="text" id="cfIssuer" placeholder="e.g. ICICI, HDFC, SBI..." oninput="renderCardFinder()" style="padding-left:12px"></div>
+  </div>
+  <div class="cf-filters" style="margin-bottom:14px">
+    <div class="cf-filter-box" style="grid-column:1/-1"><div class="cf-filter-lbl">Settlement Type</div><select class="cf-filter-sel" id="cfSettle" onchange="renderCardFinder()"><option value="ALL">All settlement types</option><option value="INSTANT">Instant</option><option value="T+1">T+1</option><option value="T+2">T+2</option><option value="Batch Settlement">Batch Settlement</option></select></div>
   </div>
   <div class="sort-row" style="margin:0 0 10px">
     <span class="sort-label">Sort:</span>
@@ -418,7 +421,7 @@ const GATEWAY_CATEGORIES = ['Education','Fastag','Travel','Utility','Insurance',
 const AGGREGATORS = ['Cashfree','Razorpay','Easebuzz','Worldline','PayU','Juspay','CCAvenue','Atom','Paytm','Other'];
 const SCHEMES = ['VISA','MASTERCARD','RUPAY','AMEX','DINERS CLUB'];
 const CARD_CATS = ['CONSUMER','BUSINESS','GOVERNMENT','ALL'];
-const SETTLEMENTS = ['INSTANT','T+1','T+2'];
+const SETTLEMENTS = ['INSTANT','T+1','T+2','Batch Settlement'];
 
 function vc(v){ return VENDOR_COLORS[v]||'#334155'; }
 
@@ -737,12 +740,14 @@ function cfSetSort(s,btn){ cfSort=s; document.querySelectorAll('#pageCardFinder 
 function renderCardFinder(){
   const cat=document.getElementById('cfCat').value;
   const gcat=document.getElementById('cfGcat').value;
+  const settle=(document.getElementById('cfSettle')||{}).value||'ALL';
   const amount=parseFloat(document.getElementById('cfAmount').value)||0;
   const issuerQ=(document.getElementById('cfIssuer').value||'').trim().toUpperCase();
   let filtered=pgRates.filter(r=>{
     if(cfScheme!=='ALL'&&!r['CARD SCHEME'].includes(cfScheme)) return false;
     if(cat!=='ALL'&&!r['CARD CATEGORY'].includes(cat)) return false;
     if(gcat!=='ALL'&&r['GATEWAY CATEGORY']!==gcat) return false;
+    if(settle!=='ALL'&&(r['SETTLEMENT TYPE']||'INSTANT')!==settle) return false;
     if(amount>0&&parseFloat(r['MAX AMOUNT (₹)'])>0&&parseFloat(r['MAX AMOUNT (₹)'])<amount) return false;
     return true;
   });
@@ -954,7 +959,7 @@ function pgFormHTML(data={}) {
     <div class="form-field"><label>GATEWAY CATEGORY</label>${sel('gcat',GATEWAY_CATEGORIES,data['GATEWAY CATEGORY']||'')}</div>
     <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'')}</div>
     <div class="form-field form-full"><label>CARD SCHEME</label>${multiSel('scheme',SCHEMES,data['CARD SCHEME']||'')}</div>
-    <div class="form-field form-full"><label>CARD CATEGORY</label>${multiSel('cardcat',['CONSUMER','BUSINESS','GOVERNMENT'],data['CARD CATEGORY']||'')}</div>
+    <div class="form-field form-full"><label>CARD CATEGORY</label>${multiSel('cardcat',['CONSUMER','BUSINESS'],data['CARD CATEGORY']||'')}</div>
     <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)']||''}" placeholder="e.g. 1.60"></div>
     <div class="form-field"><label>SWIPE RATE (%)</label><input type="number" step="0.01" id="mf_swipe" value="${data['SWIPE RATE (%)']||''}" placeholder="e.g. 2.30"></div>
     <div class="form-field"><label>MIN AMOUNT (₹)</label><input type="number" id="mf_min" value="${data['MIN AMOUNT (₹)']||''}" placeholder="e.g. 100"></div>
