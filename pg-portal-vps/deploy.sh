@@ -77,19 +77,47 @@ echo "→ Installing npm dependencies..."
 cd /var/www/pg-portal
 npm install --omit=dev
 
-# ── 7. Nginx config ───────────────────────────────────────────────────────────
+# ── 7. Nginx config (HTTP-only first, certbot adds SSL) ───────────────────────
 echo "→ Setting up Nginx config..."
-cp "$SCRIPT_DIR/nginx.conf" /etc/nginx/sites-available/pgrates.unifiedpaygate.com
+cat > /etc/nginx/sites-available/pgrates.unifiedpaygate.com << 'NGINXCONF'
+server {
+    listen 80;
+    server_name pgrates.unifiedpaygate.com;
+
+    location / {
+        proxy_pass         http://127.0.0.1:3011;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 30s;
+    }
+
+    access_log /var/log/nginx/pgrates.access.log;
+    error_log  /var/log/nginx/pgrates.error.log;
+}
+NGINXCONF
 
 if [ ! -f /etc/nginx/sites-enabled/pgrates.unifiedpaygate.com ]; then
   ln -s /etc/nginx/sites-available/pgrates.unifiedpaygate.com \
         /etc/nginx/sites-enabled/pgrates.unifiedpaygate.com
 fi
 
-# Test nginx config
 nginx -t && echo "✓ Nginx config valid"
 
-# ── 8. SSL with certbot ───────────────────────────────────────────────────────
+# ── 8. Start / reload nginx ───────────────────────────────────────────────────
+if systemctl is-active --quiet nginx; then
+  systemctl reload nginx
+else
+  systemctl start nginx
+fi
+echo "✓ Nginx running"
+
+# ── 9. SSL with certbot ───────────────────────────────────────────────────────
 if ! command -v certbot &>/dev/null; then
   echo "→ Installing certbot..."
   apt-get install -y certbot python3-certbot-nginx
@@ -104,10 +132,6 @@ certbot --nginx -d pgrates.unifiedpaygate.com --non-interactive --agree-tos \
   echo "⚠️  SSL failed — DNS may not be set yet."
   echo "   Run manually after DNS propagates: certbot --nginx -d pgrates.unifiedpaygate.com"
 }
-
-# ── 9. Reload nginx ───────────────────────────────────────────────────────────
-systemctl reload nginx
-echo "✓ Nginx reloaded"
 
 # ── 10. Start app with PM2 ────────────────────────────────────────────────────
 echo "→ Starting app with PM2..."
