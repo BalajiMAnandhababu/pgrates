@@ -435,6 +435,10 @@ async function loadData() {
 
 function processData(data) {
   const pgRows = data.PG_RATES?.rows || [];
+  pgRows.forEach(r => {
+    r['PG RATE (%)']    = parseFloat(r['PG RATE (%)'])    || 0;
+    r['SWIPE RATE (%)'] = parseFloat(r['SWIPE RATE (%)']) || 0;
+  });
   pgRatesAll = pgRows.filter(r => r['PG NAME'] && r['PG RATE (%)'] > 0 && r['CARD SCHEME'] && !r['CARD SCHEME'].includes('AFTER SWIPING'));
   pgRates = pgRatesAll.filter(r => (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE');
 
