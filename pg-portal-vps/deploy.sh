@@ -5,11 +5,32 @@
 
 set -e  # exit on any error
 
+REPO_URL="https://github.com/BalajiMAnandhababu/pgrates.git"
+REPO_DIR="/opt/pgrates"
+
 echo ""
 echo "════════════════════════════════════════════"
 echo "  PG Rate Portal — VPS Deployment Script"
 echo "  pgrates.unifiedpaygate.com"
 echo "════════════════════════════════════════════"
+echo ""
+
+# ── 0. Clone or update repo from GitHub ──────────────────────────────────────
+if ! command -v git &>/dev/null; then
+  echo "→ Installing git..."
+  apt-get install -y git
+fi
+
+if [ -d "$REPO_DIR/.git" ]; then
+  echo "→ Updating repo from GitHub..."
+  git -C "$REPO_DIR" pull
+else
+  echo "→ Cloning repo from GitHub..."
+  git clone "$REPO_URL" "$REPO_DIR"
+fi
+
+SCRIPT_DIR="$REPO_DIR/pg-portal-vps"
+echo "✓ Source ready at $SCRIPT_DIR"
 echo ""
 
 # ── 1. Install Node.js 20 (if not installed) ─────────────────────────────────
@@ -36,7 +57,6 @@ mkdir -p /var/log/pg-portal
 
 # ── 4. Copy files ─────────────────────────────────────────────────────────────
 echo "→ Copying app files..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cp -r "$SCRIPT_DIR/server"            /var/www/pg-portal/
 cp -r "$SCRIPT_DIR/public"            /var/www/pg-portal/
 cp    "$SCRIPT_DIR/package.json"      /var/www/pg-portal/

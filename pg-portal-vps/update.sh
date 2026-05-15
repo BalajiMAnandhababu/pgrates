@@ -1,15 +1,20 @@
 #!/bin/bash
-# update.sh — Push code updates to the running portal (run from VPS)
+# update.sh — Pull latest code from GitHub and restart the portal
 # Usage: bash update.sh
 # Does NOT touch .env or restart nginx
 
 set -e
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "→ Updating pg-portal..."
-cp -r "$SCRIPT_DIR/server" /var/www/pg-portal/
-cp -r "$SCRIPT_DIR/public" /var/www/pg-portal/
-cp    "$SCRIPT_DIR/package.json" /var/www/pg-portal/
+REPO_DIR="/opt/pgrates"
+SCRIPT_DIR="$REPO_DIR/pg-portal-vps"
+
+echo "→ Pulling latest code from GitHub..."
+git -C "$REPO_DIR" pull
+
+echo "→ Copying updated files..."
+cp -r "$SCRIPT_DIR/server"             /var/www/pg-portal/
+cp -r "$SCRIPT_DIR/public"             /var/www/pg-portal/
+cp    "$SCRIPT_DIR/package.json"       /var/www/pg-portal/
 cp    "$SCRIPT_DIR/ecosystem.config.js" /var/www/pg-portal/
 
 cd /var/www/pg-portal

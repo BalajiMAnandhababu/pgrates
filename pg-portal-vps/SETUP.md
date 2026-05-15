@@ -30,27 +30,14 @@ Your VPS (Ubuntu 24.04)
 
 ---
 
-## STEP 2: Upload files to VPS
+## STEP 2: Get files onto VPS from GitHub
 
-**Option A — Using Hostinger Terminal (browser-based):**
-1. Go to Hostinger → VPS → **Terminal** (top right button you can see in the screenshot)
+1. Go to Hostinger → VPS → **Terminal**
 2. Run:
    ```bash
-   mkdir -p /tmp/pg-portal-upload
-   ```
-3. Upload the zip using SFTP (FileZilla or WinSCP):
-   - Host: `195.179.193.43`
-   - Username: `root`
-   - Password: your root password from Hostinger dashboard
-   - Port: `22`
-   - Upload `pg-portal-vps.zip` to `/tmp/`
-
-4. On the VPS terminal:
-   ```bash
-   cd /tmp
-   apt-get install -y unzip
-   unzip pg-portal-vps.zip -d pg-portal-vps
-   cd pg-portal-vps
+   apt-get install -y git
+   git clone https://github.com/BalajiMAnandhababu/pgrates.git /opt/pgrates
+   cd /opt/pgrates/pg-portal-vps
    chmod +x deploy.sh update.sh
    ```
 
@@ -113,7 +100,7 @@ Save: `Ctrl+O` → Enter → `Ctrl+X`
 ## STEP 5: Run the deployment script
 
 ```bash
-cd /tmp/pg-portal-vps
+cd /opt/pgrates/pg-portal-vps
 bash deploy.sh
 ```
 
@@ -182,13 +169,12 @@ Expected health response:
 
 ## FUTURE UPDATES (when you change portal code)
 
+Push your changes to GitHub, then on the VPS run:
 ```bash
-# Upload new pg-portal-vps.zip via SFTP → extract → run:
-cd /tmp/pg-portal-vps
-bash update.sh
+bash /opt/pgrates/pg-portal-vps/update.sh
 ```
 
-This restarts only the app, preserves .env and nginx config.
+This pulls the latest code from GitHub, reinstalls dependencies, and restarts the app. Preserves `.env` and nginx config.
 
 ---
 
