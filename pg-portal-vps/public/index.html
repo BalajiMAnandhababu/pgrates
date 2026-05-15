@@ -913,7 +913,7 @@ function pgFormHTML(data={}) {
     <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'')}</div>
     <div class="form-field"><label>CARD SCHEME</label>${sel('scheme',SCHEMES,data['CARD SCHEME']||'VISA')}</div>
     <div class="form-field"><label>CARD CATEGORY</label>${sel('cardcat',CARD_CATS,data['CARD CATEGORY']||'CONSUMER')}</div>
-    <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)')||''}" placeholder="e.g. 1.60"></div>
+    <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)']||''}" placeholder="e.g. 1.60"></div>
     <div class="form-field"><label>SWIPE RATE (%)</label><input type="number" step="0.01" id="mf_swipe" value="${data['SWIPE RATE (%)']||''}" placeholder="e.g. 2.30"></div>
     <div class="form-field"><label>MIN AMOUNT (₹)</label><input type="number" id="mf_min" value="${data['MIN AMOUNT (₹)']||''}" placeholder="e.g. 100"></div>
     <div class="form-field"><label>MAX AMOUNT (₹)</label><input type="number" id="mf_max" value="${data['MAX AMOUNT (₹)']||''}" placeholder="e.g. 50000"></div>
