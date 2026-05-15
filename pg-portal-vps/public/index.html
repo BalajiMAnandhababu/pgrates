@@ -323,7 +323,7 @@ input,select,textarea{font-family:inherit;outline:none}
     <div class="allpg-filter"><label>Vendor</label><select id="allpgVendor" onchange="renderAllPGs()"><option value="ALL">All vendors</option></select></div>
     <div class="allpg-filter"><label>Card Scheme</label><select id="allpgScheme" onchange="renderAllPGs()"><option value="ALL">All schemes</option><option value="VISA">VISA</option><option value="MASTERCARD">MasterCard</option><option value="RUPAY">RuPay</option><option value="AMEX">AMEX</option><option value="DINERS CLUB">Diners Club</option></select></div>
     <div class="allpg-filter"><label>Gateway Category</label><select id="allpgGcat" onchange="renderAllPGs()"><option value="ALL">All</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="General">General</option></select></div>
-    <div class="allpg-filter"><label>Sort By</label><select id="allpgSort" onchange="renderAllPGs()"><option value="rate">Rate ↑</option><option value="rate_d">Rate ↓</option><option value="limit">Max Limit ↓</option><option value="vendor">Vendor A-Z</option></select></div>
+    <div class="allpg-filter"><label>Sort By</label><select id="allpgSort" onchange="renderAllPGs()"><option value="rate">Rate ↑</option><option value="rate_d">Rate ↓</option><option value="swipe">Swipe ↑</option><option value="limit">Max Limit ↓</option><option value="vendor">Vendor A-Z</option></select></div>
   </div>
   <div id="allpgCount" class="results-count" style="margin-bottom:10px;display:inline-block"></div>
   <div id="allpgList" style="margin-top:8px"></div>
@@ -449,8 +449,11 @@ async function loadData() {
 function processData(data) {
   const pgRows = data.PG_RATES?.rows || [];
   pgRows.forEach(r => {
-    r['PG RATE (%)']    = parseFloat(r['PG RATE (%)'])    || 0;
-    r['SWIPE RATE (%)'] = parseFloat(r['SWIPE RATE (%)']) || 0;
+    r['PG RATE (%)']     = parseFloat(r['PG RATE (%)'])    || 0;
+    r['SWIPE RATE (%)']  = parseFloat(r['SWIPE RATE (%)']) || 0;
+    r['MAX AMOUNT (₹)']  = parseMoney(r['MAX AMOUNT (₹)']);
+    r['MIN AMOUNT (₹)']  = parseMoney(r['MIN AMOUNT (₹)']);
+    r['RUPAY LIMIT (₹)'] = parseMoney(r['RUPAY LIMIT (₹)']);
   });
   pgRatesAll = pgRows.filter(r => r['PG NAME'] && r['PG RATE (%)'] > 0 && r['CARD SCHEME'] && !r['CARD SCHEME'].includes('AFTER SWIPING'));
   pgRates = pgRatesAll.filter(r => (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE');
@@ -555,6 +558,7 @@ function renderRateCard(){
       <span class="sort-label">Sort:</span>
       <button class="sort-btn ${rcSort==='rate'?'active':''}" onclick="rcSetSort('rate',this)">Rate ↑</button>
       <button class="sort-btn ${rcSort==='rate_d'?'active':''}" onclick="rcSetSort('rate_d',this)">Rate ↓</button>
+      <button class="sort-btn ${rcSort==='swipe'?'active':''}" onclick="rcSetSort('swipe',this)">Swipe ↑</button>
       <button class="sort-btn ${rcSort==='limit'?'active':''}" onclick="rcSetSort('limit',this)">Limit ↓</button>
     </div>`;
 
@@ -566,6 +570,7 @@ function renderRateCard(){
   });
   if(rcSort==='rate')   filtered.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
   if(rcSort==='rate_d') filtered.sort((a,b)=>b['PG RATE (%)']-a['PG RATE (%)']);
+  if(rcSort==='swipe')  filtered.sort((a,b)=>a['SWIPE RATE (%)']-b['SWIPE RATE (%)']);
   if(rcSort==='limit')  filtered.sort((a,b)=>b['MAX AMOUNT (₹)']-a['MAX AMOUNT (₹)']);
 
   const grouped = {};
@@ -603,9 +608,9 @@ function renderRateCard(){
         </div>
         <div class="pgc-detail">
           <div class="pgc-detail-grid">
-            <div><div class="pgc-di-label">Min Amount</div><div class="pgc-di-val">₹${fmtNum(minLimit===Infinity?0:minLimit)}</div></div>
+            <div><div class="pgc-di-label">Min Amount</div><div class="pgc-di-val">${fmtAmt(minLimit===Infinity?0:minLimit)}</div></div>
             <div><div class="pgc-di-label">Settlement</div><div class="pgc-di-val">${rep['SETTLEMENT TYPE']||'INSTANT'}</div></div>
-            ${rupayLim?`<div><div class="pgc-di-label">RuPay Limit</div><div class="pgc-di-val">₹${fmtNum(rupayLim)}</div></div>`:''}
+            ${rupayLim?`<div><div class="pgc-di-label">RuPay Limit</div><div class="pgc-di-val">${fmtAmt(rupayLim)}</div></div>`:''}
             ${agg?`<div><div class="pgc-di-label">Aggregator</div><div class="pgc-di-val">${agg}</div></div>`:''}
           </div>
           <div style="margin-top:8px">
@@ -615,7 +620,7 @@ function renderRateCard(){
               <div style="display:flex;gap:8px">
                 <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">${fmtRate(r['PG RATE (%)'])}</span>
                 <span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtRate(r['SWIPE RATE (%)'])}</span>
-                <span style="font-family:'DM Mono',monospace;color:var(--green);font-size:11px">₹${fmtNum(r['MAX AMOUNT (₹)'])}</span>
+                <span style="font-family:'DM Mono',monospace;color:var(--green);font-size:11px">${fmtAmt(r['MAX AMOUNT (₹)'])}</span>
               </div>
             </div>`).join('')}
           </div>
@@ -816,6 +821,7 @@ function renderAllPGs(){
   });
   if(sort==='rate')   data.sort((a,b)=>a['PG RATE (%)']-b['PG RATE (%)']);
   if(sort==='rate_d') data.sort((a,b)=>b['PG RATE (%)']-a['PG RATE (%)']);
+  if(sort==='swipe')  data.sort((a,b)=>a['SWIPE RATE (%)']-b['SWIPE RATE (%)']);
   if(sort==='limit')  data.sort((a,b)=>b['MAX AMOUNT (₹)']-a['MAX AMOUNT (₹)']);
   if(sort==='vendor') data.sort((a,b)=>a['VENDOR'].localeCompare(b['VENDOR']));
 
@@ -842,7 +848,8 @@ function renderAllPGs(){
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--accent)">${fmtRate(minR)}</div>
-          <div style="font-size:10px;color:var(--ink3)">₹${fmtNum(maxL)} max</div>
+          <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)">Swipe ${fmtRate(Math.min(...rows.map(r=>r['SWIPE RATE (%)']||99).filter(v=>v<99)))}</div>
+          <div style="font-size:10px;color:var(--ink3)">${fmtAmt(maxL)}</div>
         </div>
       </div>
     </div>`;
@@ -1022,6 +1029,7 @@ async function saveIBRow(){
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
+function parseMoney(v){ return parseFloat((v||'').toString().replace(/,/g,''))||0; }
 function fmtRate(v){ if(!v&&v!==0) return '—'; return parseFloat(v).toFixed(2)+'%'; }
 function fmtAmt(v){ if(!v) return '—'; if(v>=100000) return '₹'+(v/100000).toFixed(1)+'L'; if(v>=1000) return '₹'+(v/1000).toFixed(0)+'K'; return '₹'+v; }
 function fmtNum(v){ const n=parseFloat(v); if(!v||isNaN(n)) return '—'; return n.toLocaleString('en-IN'); }
