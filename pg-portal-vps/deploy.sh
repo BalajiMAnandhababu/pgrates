@@ -6,6 +6,8 @@
 set -e  # exit on any error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TRAEFIK_COMPOSE="/docker/n8n/docker-compose.yml"
+TRAEFIK_DYNAMIC_DIR="/docker/n8n/traefik-dynamic"
 
 echo ""
 echo "════════════════════════════════════════════"
@@ -38,9 +40,9 @@ mkdir -p /var/log/pg-portal
 
 # ── 4. Copy files ─────────────────────────────────────────────────────────────
 echo "→ Copying app files..."
-cp -r "$SCRIPT_DIR/server"            /var/www/pg-portal/
-cp -r "$SCRIPT_DIR/public"            /var/www/pg-portal/
-cp    "$SCRIPT_DIR/package.json"      /var/www/pg-portal/
+cp -r "$SCRIPT_DIR/server"              /var/www/pg-portal/
+cp -r "$SCRIPT_DIR/public"              /var/www/pg-portal/
+cp    "$SCRIPT_DIR/package.json"        /var/www/pg-portal/
 cp    "$SCRIPT_DIR/ecosystem.config.js" /var/www/pg-portal/
 
 # ── 5. Create .env if not exists ─────────────────────────────────────────────
@@ -58,63 +60,60 @@ echo "→ Installing npm dependencies..."
 cd /var/www/pg-portal
 npm install --omit=dev
 
-# ── 7. Nginx config (HTTP-only first, certbot adds SSL) ───────────────────────
-echo "→ Setting up Nginx config..."
-cat > /etc/nginx/sites-available/pgrates.unifiedpaygate.com << 'NGINXCONF'
-server {
-    listen 80;
-    server_name pgrates.unifiedpaygate.com;
+# ── 7. Traefik routing ────────────────────────────────────────────────────────
+echo "→ Configuring Traefik route for pgrates.unifiedpaygate.com..."
+mkdir -p "$TRAEFIK_DYNAMIC_DIR"
 
-    location / {
-        proxy_pass         http://127.0.0.1:3011;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade $http_upgrade;
-        proxy_set_header   Connection 'upgrade';
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        proxy_read_timeout 30s;
-    }
+cat > "$TRAEFIK_DYNAMIC_DIR/pgrates.yml" << 'TRAEFIKCONF'
+http:
+  routers:
+    pgrates:
+      rule: "Host(`pgrates.unifiedpaygate.com`)"
+      entrypoints:
+        - websecure
+      tls:
+        certResolver: mytlschallenge
+      service: pgrates-svc
+  services:
+    pgrates-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3011"
+TRAEFIKCONF
 
-    access_log /var/log/nginx/pgrates.access.log;
-    error_log  /var/log/nginx/pgrates.error.log;
-}
-NGINXCONF
-
-if [ ! -f /etc/nginx/sites-enabled/pgrates.unifiedpaygate.com ]; then
-  ln -s /etc/nginx/sites-available/pgrates.unifiedpaygate.com \
-        /etc/nginx/sites-enabled/pgrates.unifiedpaygate.com
-fi
-
-nginx -t && echo "✓ Nginx config valid"
-
-# ── 8. Start / reload nginx ───────────────────────────────────────────────────
-if systemctl is-active --quiet nginx; then
-  systemctl reload nginx
+# Add file provider + host.docker.internal to Traefik via override (if not already done)
+OVERRIDE_FILE="/docker/n8n/docker-compose.override.yml"
+if [ ! -f "$OVERRIDE_FILE" ]; then
+  echo "→ Creating Traefik override for file provider..."
+  cat > "$OVERRIDE_FILE" << 'OVERRIDE'
+services:
+  traefik:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+      - "--providers.file.directory=/traefik-dynamic"
+      - "--providers.file.watch=true"
+    volumes:
+      - /docker/n8n/traefik-dynamic:/traefik-dynamic:ro
+OVERRIDE
+  echo "→ Restarting Traefik..."
+  docker compose -f "$TRAEFIK_COMPOSE" up -d traefik
+  echo "✓ Traefik updated"
 else
-  systemctl start nginx
-fi
-echo "✓ Nginx running"
-
-# ── 9. SSL with certbot ───────────────────────────────────────────────────────
-if ! command -v certbot &>/dev/null; then
-  echo "→ Installing certbot..."
-  apt-get install -y certbot python3-certbot-nginx
+  echo "✓ Traefik override already in place"
 fi
 
-echo ""
-echo "→ Obtaining SSL certificate for pgrates.unifiedpaygate.com..."
-echo "  (Domain DNS A record must point to 195.179.193.43 before this works)"
-echo ""
-certbot --nginx -d pgrates.unifiedpaygate.com --non-interactive --agree-tos \
-  --email admin@unifiedpaygate.com --redirect || {
-  echo "⚠️  SSL failed — DNS may not be set yet."
-  echo "   Run manually after DNS propagates: certbot --nginx -d pgrates.unifiedpaygate.com"
-}
-
-# ── 10. Start app with PM2 ────────────────────────────────────────────────────
+# ── 8. Start app with PM2 ────────────────────────────────────────────────────
 echo "→ Starting app with PM2..."
 cd /var/www/pg-portal
 if pm2 list | grep -q "pg-portal"; then
