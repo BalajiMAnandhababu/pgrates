@@ -460,8 +460,15 @@ function processData(data) {
     r['MIN AMOUNT (₹)']  = parseMoney(r['MIN AMOUNT (₹)']);
     r['RUPAY LIMIT (₹)'] = parseMoney(r['RUPAY LIMIT (₹)']);
   });
-  pgRatesAll = pgRows.filter(r => r['PG NAME'] && r['PG RATE (%)'] > 0 && r['CARD SCHEME'] && !r['CARD SCHEME'].includes('AFTER SWIPING'));
-  pgRates = pgRatesAll.filter(r => (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE');
+  // Admin sees every row that has a PG name (including inactive / zero-rate rows)
+  pgRatesAll = pgRows.filter(r => r['PG NAME']);
+  // Public views only get valid, active rows with a real rate and card scheme
+  pgRates = pgRatesAll.filter(r =>
+    r['PG RATE (%)'] > 0 &&
+    r['CARD SCHEME'] &&
+    !r['CARD SCHEME'].includes('AFTER SWIPING') &&
+    (r['STATUS']||'ACTIVE').toUpperCase() !== 'INACTIVE'
+  );
 
   const ibRows = data.ISSUER_BLOCKS?.rows || [];
   issuerBlocksAll = ibRows.filter(r => r['VENDOR'] && r['ISSUER BANK']);
