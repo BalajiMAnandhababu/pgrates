@@ -374,6 +374,7 @@ input,select,textarea{font-family:inherit;outline:none}
     <div class="allpg-filter"><label>Vendor</label><select id="allpgVendor" onchange="renderAllPGs()"><option value="ALL">All vendors</option></select></div>
     <div class="allpg-filter"><label>Card Scheme</label><select id="allpgScheme" onchange="renderAllPGs()"><option value="ALL">All schemes</option><option value="VISA">VISA</option><option value="MASTERCARD">MasterCard</option><option value="RUPAY">RuPay</option><option value="AMEX">AMEX</option><option value="DINERS CLUB">Diners Club</option></select></div>
     <div class="allpg-filter"><label>Gateway Category</label><select id="allpgGcat" onchange="renderAllPGs()"><option value="ALL">All</option><option value="Education">Education</option><option value="Fastag">Fastag</option><option value="Travel">Travel</option><option value="Utility">Utility</option><option value="Insurance">Insurance</option><option value="Ecommerce">Ecommerce</option><option value="General">General</option></select></div>
+    <div class="allpg-filter"><label>Settlement Type</label><select id="allpgSettle" onchange="renderAllPGs()"><option value="ALL">All</option><option value="INSTANT">Instant</option><option value="T+1">T+1</option><option value="T+2">T+2</option><option value="Batch Settlement">Batch Settlement</option></select></div>
     <div class="allpg-filter"><label>Sort By</label><select id="allpgSort" onchange="renderAllPGs()"><option value="rate">Rate ↑</option><option value="rate_d">Rate ↓</option><option value="swipe">Swipe ↑</option><option value="limit">Max Limit ↓</option><option value="vendor">Vendor A-Z</option></select></div>
   </div>
   <div id="allpgCount" class="results-count" style="margin-bottom:10px;display:inline-block"></div>
@@ -975,11 +976,13 @@ function renderAllPGs(){
   const vendor=document.getElementById('allpgVendor').value;
   const scheme=document.getElementById('allpgScheme').value;
   const gcat=document.getElementById('allpgGcat').value;
+  const settle=document.getElementById('allpgSettle').value;
   const sort=document.getElementById('allpgSort').value;
   let data=pgRates.filter(r=>{
     if(vendor!=='ALL'&&r['VENDOR']!==vendor) return false;
     if(scheme!=='ALL'&&!(r['CARD SCHEME']||'').includes(scheme)) return false;
     if(gcat!=='ALL'&&r['GATEWAY CATEGORY']!==gcat) return false;
+    if(settle!=='ALL'&&(r['SETTLEMENT TYPE']||'INSTANT')!==settle) return false;
     if(q&&!(r['PG NAME']||'').toLowerCase().includes(q)&&!(r['VENDOR']||'').toLowerCase().includes(q)) return false;
     return true;
   });
