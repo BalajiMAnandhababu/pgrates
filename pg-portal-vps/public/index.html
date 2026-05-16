@@ -911,40 +911,64 @@ function switchAdminTab(tab){
 }
 
 // ── PG Rates Admin Table ──────────────────────────────────────────────────────
+const PG_ADMIN_COLS = ['VENDOR','PG NAME','GATEWAY CATEGORY','PAYMENT GATEWAY AGGREGATOR','CARD SCHEME','CARD CATEGORY','PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)','SETTLEMENT TYPE','STATUS'];
+const PG_NUMERIC   = new Set(['PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)']);
+let pgAdminSort = { col: null, dir: 1 };
+
 function setPGFilter(col, val){
-  pgAdminFilters[col] = val.trim().toLowerCase();
-  renderAdminPGTable(true);
+  pgAdminFilters[col] = val.toLowerCase();
+  updateAdminPGBody(); // only touch <tbody> — keeps input focus
 }
-function renderAdminPGTable(keepScroll=false){
+function setPGSort(col){
+  pgAdminSort = pgAdminSort.col===col
+    ? { col, dir: pgAdminSort.dir*-1 }
+    : { col, dir: 1 };
+  // Update header indicators without re-rendering
+  PG_ADMIN_COLS.forEach((c,i)=>{
+    const el=document.getElementById('pgsi_'+i);
+    if(el) el.textContent = c===col ? (pgAdminSort.dir===1?'↑':'↓') : '';
+  });
+  updateAdminPGBody();
+}
+
+function renderAdminPGTable(){
   const wrap = document.getElementById('adminPGTableWrap');
   if(!pgRatesAll.length){ wrap.innerHTML='<div class="no-results">No data loaded</div>'; return; }
-  const cols = ['VENDOR','PG NAME','GATEWAY CATEGORY','PAYMENT GATEWAY AGGREGATOR','CARD SCHEME','CARD CATEGORY','PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)','SETTLEMENT TYPE','STATUS'];
-  // Apply column filters
-  const rows = pgRatesAll.filter(r=>cols.every(c=>{
+  // Build table structure only once — preserves filter input focus on subsequent calls
+  if(!wrap.querySelector('.admin-table')){
+    wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
+      <thead>
+        <tr>${PG_ADMIN_COLS.map((c,i)=>`<th onclick="setPGSort('${c}')" style="cursor:pointer;user-select:none;white-space:nowrap">${c} <span id="pgsi_${i}" style="font-size:10px;opacity:.7"></span></th>`).join('')}<th>ACTIONS</th></tr>
+        <tr class="filter-row">${PG_ADMIN_COLS.map(c=>`<th><input class="tbl-filter" placeholder="Filter…" value="${pgAdminFilters[c]||''}" oninput="setPGFilter('${c}',this.value)"></th>`).join('')}<th></th></tr>
+      </thead>
+      <tbody id="adminPGBody"></tbody>
+    </table></div>`;
+  }
+  updateAdminPGBody();
+}
+function updateAdminPGBody(){
+  const tbody = document.getElementById('adminPGBody');
+  if(!tbody) return;
+  let rows = pgRatesAll.filter(r=>PG_ADMIN_COLS.every(c=>{
     const f=pgAdminFilters[c]||'';
-    if(!f) return true;
-    return (r[c]||'').toString().toLowerCase().includes(f);
+    return !f||(r[c]||'').toString().toLowerCase().includes(f);
   }));
-  const scrollTop = keepScroll ? (wrap.querySelector('.admin-table-wrap')||{}).scrollTop||0 : 0;
-  wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
-    <thead>
-      <tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr>
-      <tr class="filter-row">${cols.map(c=>`<th><input class="tbl-filter" placeholder="Filter…" value="${pgAdminFilters[c]||''}" oninput="setPGFilter('${c.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this.value)"></th>`).join('')}<th></th></tr>
-    </thead>
-    <tbody>${rows.map((r)=>{
-      const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
-      return `<tr class="${inactive?'inactive':''}">
-        ${cols.map(c=>`<td>${c==='STATUS'?
-          `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('PG',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
-          (r[c]||'—')}</td>`).join('')}
-        <td style="white-space:nowrap">
-          <button class="tbl-edit-btn" onclick="openEditModal('PG',${r._rowIndex})">Edit</button>
-        </td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table></div>`;
-  const scrollEl=wrap.querySelector('.admin-table-wrap');
-  if(scrollEl&&keepScroll) scrollEl.scrollTop=scrollTop;
+  if(pgAdminSort.col){
+    const {col,dir}=pgAdminSort;
+    rows=[...rows].sort((a,b)=>{
+      if(PG_NUMERIC.has(col)) return ((parseFloat(a[col])||0)-(parseFloat(b[col])||0))*dir;
+      return (a[col]||'').toString().localeCompare((b[col]||'').toString())*dir;
+    });
+  }
+  tbody.innerHTML = rows.length ? rows.map(r=>{
+    const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
+    return `<tr class="${inactive?'inactive':''}">
+      ${PG_ADMIN_COLS.map(c=>`<td>${c==='STATUS'?
+        `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('PG',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
+        (r[c]||'—')}</td>`).join('')}
+      <td style="white-space:nowrap"><button class="tbl-edit-btn" onclick="openEditModal('PG',${r._rowIndex})">Edit</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="${PG_ADMIN_COLS.length+1}" style="text-align:center;padding:20px;color:var(--ink3)">No rows match filters</td></tr>`;
 }
 
 // ── Issuer Blocks Admin Table ─────────────────────────────────────────────────
