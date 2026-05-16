@@ -165,6 +165,46 @@ app.put('/api/sheets', async (req, res) => {
   }
 });
 
+// ── DELETE /api/sheets — delete a row ────────────────────────────────────────
+app.delete('/api/sheets', async (req, res) => {
+  if (!checkAdmin(req, res)) return;
+  const { sheet, rowIndex } = req.body;
+  const cfg = TABS[sheet];
+  if (!cfg) return res.status(400).json({ error: 'Unknown sheet' });
+
+  try {
+    const sheets = await getSheetsClient();
+
+    // Resolve the numeric sheetId (gid) for the tab
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+    const tabMeta = meta.data.sheets.find(s => s.properties.title === cfg.tab);
+    if (!tabMeta) return res.status(400).json({ error: 'Tab not found' });
+    const sheetId = tabMeta.properties.sheetId;
+
+    const actualRow = cfg.dataStartRow + rowIndex; // 1-based sheet row
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: actualRow - 1, // 0-based inclusive
+              endIndex:   actualRow,     // 0-based exclusive
+            },
+          },
+        }],
+      },
+    });
+
+    res.json({ ok: true, action: 'deleted' });
+  } catch (err) {
+    console.error('DELETE /api/sheets error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, ts: new Date().toISOString(), sheet: !!SHEET_ID });

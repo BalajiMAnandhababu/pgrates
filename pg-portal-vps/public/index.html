@@ -966,28 +966,54 @@ function updateAdminPGBody(){
       ${PG_ADMIN_COLS.map(c=>`<td>${c==='STATUS'?
         `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('PG',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
         (r[c]||'—')}</td>`).join('')}
-      <td style="white-space:nowrap"><button class="tbl-edit-btn" onclick="openEditModal('PG',${r._rowIndex})">Edit</button></td>
+      <td style="white-space:nowrap">
+        <button class="tbl-edit-btn" onclick="openEditModal('PG',${r._rowIndex})">Edit</button>
+        <button class="tbl-del-btn" onclick="deleteRow('PG_RATES',${r._rowIndex})">Delete</button>
+      </td>
     </tr>`;
   }).join('') : `<tr><td colspan="${PG_ADMIN_COLS.length+1}" style="text-align:center;padding:20px;color:var(--ink3)">No rows match filters</td></tr>`;
 }
 
 // ── Issuer Blocks Admin Table ─────────────────────────────────────────────────
+const IB_ADMIN_COLS=['VENDOR','PG NAME','CARD SCHEME','ISSUER BANK','IS_BLOCKED','BLOCK TYPE','AFFECTED CATEGORY','NOTES','STATUS'];
+let ibAdminFilters={};
+let ibAdminSort={col:null,dir:1};
+
+function setIBFilter(col,val){ ibAdminFilters[col]=val.toLowerCase(); updateAdminIBBody(); }
+function setIBSort(col){
+  ibAdminSort = ibAdminSort.col===col ? {col,dir:ibAdminSort.dir*-1} : {col,dir:1};
+  IB_ADMIN_COLS.forEach((c,i)=>{ const el=document.getElementById('ibsi_'+i); if(el) el.textContent=c===col?(ibAdminSort.dir===1?'↑':'↓'):''; });
+  updateAdminIBBody();
+}
 function renderAdminIBTable(){
-  const wrap = document.getElementById('adminIBTableWrap');
+  const wrap=document.getElementById('adminIBTableWrap');
   if(!issuerBlocksAll.length){ wrap.innerHTML='<div class="no-results">No issuer blocks recorded</div>'; return; }
-  const cols=['VENDOR','PG NAME','CARD SCHEME','ISSUER BANK','IS_BLOCKED','BLOCK TYPE','AFFECTED CATEGORY','NOTES','STATUS'];
-  wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
-    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr></thead>
-    <tbody>${issuerBlocksAll.map((r,i)=>{
-      const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
-      return `<tr class="${inactive?'inactive':''}">
-        ${cols.map(c=>`<td>${c==='STATUS'?
-          `<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('IB',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:
-          (r[c]||'—')}</td>`).join('')}
-        <td><button class="tbl-edit-btn" onclick="openEditModal('IB',${r._rowIndex})">Edit</button></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table></div>`;
+  if(!wrap.querySelector('.admin-table')){
+    wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
+      <thead>
+        <tr>${IB_ADMIN_COLS.map((c,i)=>`<th onclick="setIBSort('${c}')" style="cursor:pointer;user-select:none;white-space:nowrap">${c} <span id="ibsi_${i}" style="font-size:10px;opacity:.7"></span></th>`).join('')}<th>ACTIONS</th></tr>
+        <tr class="filter-row">${IB_ADMIN_COLS.map(c=>`<th><input class="tbl-filter" placeholder="Filter…" value="${ibAdminFilters[c]||''}" oninput="setIBFilter('${c}',this.value)"></th>`).join('')}<th></th></tr>
+      </thead>
+      <tbody id="adminIBBody"></tbody>
+    </table></div>`;
+  }
+  updateAdminIBBody();
+}
+function updateAdminIBBody(){
+  const tbody=document.getElementById('adminIBBody');
+  if(!tbody) return;
+  let rows=issuerBlocksAll.filter(r=>IB_ADMIN_COLS.every(c=>{ const f=ibAdminFilters[c]||''; return !f||(r[c]||'').toString().toLowerCase().includes(f); }));
+  if(ibAdminSort.col){ const {col,dir}=ibAdminSort; rows=[...rows].sort((a,b)=>(a[col]||'').toString().localeCompare((b[col]||'').toString())*dir); }
+  tbody.innerHTML=rows.length?rows.map(r=>{
+    const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
+    return `<tr class="${inactive?'inactive':''}">
+      ${IB_ADMIN_COLS.map(c=>`<td>${c==='STATUS'?`<button class="status-pill ${inactive?'inactive':'active'}" onclick="toggleStatus('IB',${r._rowIndex},'${inactive?'ACTIVE':'INACTIVE'}')">${inactive?'INACTIVE':'ACTIVE'}</button>`:(r[c]||'—')}</td>`).join('')}
+      <td style="white-space:nowrap">
+        <button class="tbl-edit-btn" onclick="openEditModal('IB',${r._rowIndex})">Edit</button>
+        <button class="tbl-del-btn" onclick="deleteRow('ISSUER_BLOCKS',${r._rowIndex})">Delete</button>
+      </td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="${IB_ADMIN_COLS.length+1}" style="text-align:center;padding:20px;color:var(--ink3)">No rows match filters</td></tr>`;
 }
 
 // ── Status toggle ─────────────────────────────────────────────────────────────
@@ -998,6 +1024,20 @@ async function toggleStatus(sheet, rowIndex, newStatus){
     await loadData();
     if(adminUnlocked){ renderAdminPGTable(); renderAdminIBTable(); }
   } catch(e){ showToast('Save failed: '+e.message); }
+}
+
+async function deleteRow(sheet, rowIndex){
+  if(!confirm('Delete this row permanently? This cannot be undone.')) return;
+  try {
+    await apiFetch('/sheets', {
+      method: 'DELETE',
+      headers: { 'Content-Type':'application/json', 'x-admin-pin': ADMIN_PIN },
+      body: JSON.stringify({ sheet, rowIndex }),
+    });
+    showToast('Deleted ✓');
+    await loadData();
+    if(adminUnlocked){ renderAdminPGTable(); renderAdminIBTable(); }
+  } catch(e){ showToast('Delete failed: '+e.message); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1031,11 +1071,26 @@ function pgFormHTML(data={}) {
   <button class="cancel-btn" onclick="closeModalDirect()">Cancel</button>`;
 }
 
+function ibPGNamesFor(vendor){
+  const pgs=[...new Set(pgRatesAll.filter(r=>r['VENDOR']===vendor).map(r=>r['PG NAME']))].sort();
+  return ['ALL',...pgs];
+}
+function ibVendorChanged(sel){
+  const vendor=sel.value;
+  const pgSel=document.getElementById('mf_pgname');
+  if(!pgSel) return;
+  const opts=ibPGNamesFor(vendor);
+  pgSel.innerHTML=opts.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
 function ibFormHTML(data={}) {
   const sel=(id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  const vendors=[...new Set(pgRatesAll.map(r=>r['VENDOR']))].sort();
+  const curVendor=data['VENDOR']||'';
+  const pgOpts=curVendor?ibPGNamesFor(curVendor):['ALL'];
+  const curPG=data['PG NAME']||'ALL';
   return `<div class="form-grid">
-    <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors2" placeholder="Vendor"><datalist id="dl_vendors2">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
-    <div class="form-field"><label>PG NAME</label><input id="mf_pgname" value="${data['PG NAME']||''}" placeholder="PG or ALL"></div>
+    <div class="form-field"><label>VENDOR</label><select id="mf_vendor" onchange="ibVendorChanged(this)"><option value="">— Select vendor —</option>${vendors.map(v=>`<option ${v===curVendor?'selected':''}>${v}</option>`).join('')}</select></div>
+    <div class="form-field"><label>PG NAME</label><select id="mf_pgname">${pgOpts.map(p=>`<option ${p===curPG?'selected':''}>${p}</option>`).join('')}</select></div>
     <div class="form-field"><label>CARD SCHEME</label>${sel('scheme',[...SCHEMES,'ALL'],data['CARD SCHEME']||'VISA')}</div>
     <div class="form-field"><label>ISSUER BANK</label><input id="mf_bank" value="${data['ISSUER BANK']||''}" placeholder="e.g. HDFC, ICICI"></div>
     <div class="form-field"><label>IS_BLOCKED</label>${sel('blocked',['YES','NO'],data['IS_BLOCKED']||'YES')}</div>
