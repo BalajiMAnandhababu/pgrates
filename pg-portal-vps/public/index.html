@@ -574,8 +574,8 @@ function renderDashboard(){
   const tbl=`<div class="dash-table-wrap"><table class="dash-table">
     <thead><tr>
       ${hdr('vendor','Vendor')}
-      ${hdr('minPG','Min PG')}${hdr('maxPG','Max PG')}${hdr('avgPG','Avg PG')}
-      ${hdr('minSW','Min Swipe')}${hdr('maxSW','Max Swipe')}${hdr('avgSW','Avg Swipe')}
+      ${hdr('minPG','Min PG')}${hdr('maxPG','Max PG')}
+      ${hdr('minSW','Min Swipe')}${hdr('maxSW','Max Swipe')}
     </tr></thead>
     <tbody>
       ${rows.map(r=>{
@@ -583,19 +583,19 @@ function renderDashboard(){
         const safeV=r.vendor.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         return `<tr class="dash-vendor-row" onclick="dbToggleVendor('${safeV}')">
           <td><span class="dash-expand-icon">${exp?'▼':'▶'}</span><span class="dash-vendor" style="color:${c}">${r.vendor}</span><span class="dash-count">(${r.count} PGs)</span></td>
-          <td class="rate-min">${fmtRate(r.minPG)}</td><td class="rate-max">${fmtRate(r.maxPG)}</td><td class="rate-avg">${fmtRate(r.avgPG)}</td>
-          <td class="swipe-min">${r.minSW?fmtRate(r.minSW):'—'}</td><td class="swipe-max">${r.maxSW?fmtRate(r.maxSW):'—'}</td><td class="swipe-avg">${r.avgSW?fmtRate(r.avgSW):'—'}</td>
+          <td class="rate-min">${fmtRate(r.minPG)}</td><td class="rate-max">${fmtRate(r.maxPG)}</td>
+          <td class="swipe-min">${r.minSW?fmtRate(r.minSW):'—'}</td><td class="swipe-max">${r.maxSW?fmtRate(r.maxSW):'—'}</td>
         </tr>
         ${exp?r.pgRows.map(p=>`<tr class="dash-detail-row">
           <td>${p.name}</td>
-          <td class="rate-min">${fmtRate(p.minPG)}</td><td class="rate-max">${fmtRate(p.maxPG)}</td><td class="rate-avg">${fmtRate(p.avgPG)}</td>
-          <td class="swipe-min">${p.minSW?fmtRate(p.minSW):'—'}</td><td class="swipe-max">${p.maxSW?fmtRate(p.maxSW):'—'}</td><td class="swipe-avg">${p.avgSW?fmtRate(p.avgSW):'—'}</td>
+          <td class="rate-min">${fmtRate(p.minPG)}</td><td class="rate-max">${fmtRate(p.maxPG)}</td>
+          <td class="swipe-min">${p.minSW?fmtRate(p.minSW):'—'}</td><td class="swipe-max">${p.maxSW?fmtRate(p.maxSW):'—'}</td>
         </tr>`).join(''):''}`;
       }).join('')}
       <tr class="total-row">
         <td>Grand Total (${filtered.length} rates)</td>
-        <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td><td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td><td>${allPG.length?fmtRate(avg(allPG)):'—'}</td>
-        <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td><td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td><td>${allSW.length?fmtRate(avg(allSW)):'—'}</td>
+        <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td><td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td>
+        <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td><td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td>
       </tr>
     </tbody>
   </table></div>`;
