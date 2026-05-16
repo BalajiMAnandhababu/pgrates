@@ -251,13 +251,13 @@ input,select,textarea{font-family:inherit;outline:none}
 .dash-detail-row td:first-child{padding-left:34px;color:var(--ink2);font-weight:600;font-family:inherit;font-size:11px}
 .dash-detail-row td:not(:first-child){font-size:11px}
 .dash-expand-icon{font-size:9px;color:var(--ink4);margin-right:6px;display:inline-block;transition:transform .15s}
-.db-slider-wrap{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px}
+.db-slider-wrap{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:8px}
 .db-slider-lbl{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .db-slider-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)}
 .db-slider-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--accent)}
 .db-slider{width:100%;accent-color:var(--accent);height:4px;cursor:pointer}
 .db-slider-ticks{display:flex;justify-content:space-between;font-size:9px;color:var(--ink4);margin-top:5px}
-.db-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.db-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:8px}
 .db-stat-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px;text-align:center}
 .db-stat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-bottom:4px}
 .db-stat-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:600}
@@ -279,7 +279,7 @@ input,select,textarea{font-family:inherit;outline:none}
 <div class="page active" id="pageHome">
   <div class="home-hero">
     <div class="home-hero-title">Find the right<br>payment gateway</div>
-    <div class="home-hero-sub">Search by vendor, card type, or amount</div>
+    <div class="home-hero-sub">Search by vendor, card type</div>
   </div>
   <div class="search-wrap">
     <div class="search-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
@@ -567,6 +567,7 @@ function renderDashboard(){
   if(sumEl) sumEl.innerHTML=[
     {lbl:'Vendors',val:rows.length,cls:'color:var(--ink)'},
     {lbl:'Min PG Rate',val:allPG.length?fmtRate(Math.min(...allPG)):'—',cls:'color:var(--green)'},
+    {lbl:'Max PG Rate',val:allPG.length?fmtRate(Math.max(...allPG)):'—',cls:'color:var(--red)'},
   ].map(s=>`<div class="db-stat-card"><div class="db-stat-lbl">${s.lbl}</div><div class="db-stat-val" style="${s.cls}">${s.val}</div></div>`).join('');
   const si=col=>col===dbSortCol?(dbSortDir===1?' ↑':' ↓'):'';
   const hdr=(col,lbl)=>`<th onclick="dbSetSort('${col}')">${lbl}${si(col)}</th>`;
