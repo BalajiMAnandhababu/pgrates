@@ -593,7 +593,7 @@ function renderDashboard(){
         </tr>`).join(''):''}`;
       }).join('')}
       <tr class="total-row">
-        <td>Grand Total (${filtered.length} rates)</td>
+        <td>Grand Total</td>
         <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td><td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td>
         <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td><td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td>
       </tr>
