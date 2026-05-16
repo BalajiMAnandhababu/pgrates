@@ -567,7 +567,6 @@ function renderDashboard(){
   if(sumEl) sumEl.innerHTML=[
     {lbl:'Vendors',val:rows.length,cls:'color:var(--ink)'},
     {lbl:'Min PG Rate',val:allPG.length?fmtRate(Math.min(...allPG)):'—',cls:'color:var(--green)'},
-    {lbl:'Avg PG Rate',val:allPG.length?fmtRate(avg(allPG)):'—',cls:'color:var(--accent)'},
   ].map(s=>`<div class="db-stat-card"><div class="db-stat-lbl">${s.lbl}</div><div class="db-stat-val" style="${s.cls}">${s.val}</div></div>`).join('');
   const si=col=>col===dbSortCol?(dbSortDir===1?' ↑':' ↓'):'';
   const hdr=(col,lbl)=>`<th onclick="dbSetSort('${col}')">${lbl}${si(col)}</th>`;
