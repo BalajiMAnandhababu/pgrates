@@ -245,6 +245,18 @@ input,select,textarea{font-family:inherit;outline:none}
 .swipe-min{color:var(--teal)}
 .swipe-max{color:var(--amber)}
 .swipe-avg{color:var(--purple)}
+.dash-vendor-row{cursor:pointer}
+.dash-vendor-row:hover td{background:var(--accent-l)!important}
+.dash-detail-row td{background:var(--line2);border-bottom:1px solid var(--line)}
+.dash-detail-row td:first-child{padding-left:34px;color:var(--ink2);font-weight:600;font-family:inherit;font-size:11px}
+.dash-detail-row td:not(:first-child){font-size:11px}
+.dash-expand-icon{font-size:9px;color:var(--ink4);margin-right:6px;display:inline-block;transition:transform .15s}
+.db-slider-wrap{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px}
+.db-slider-lbl{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.db-slider-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)}
+.db-slider-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--accent)}
+.db-slider{width:100%;accent-color:var(--accent);height:4px;cursor:pointer}
+.db-slider-ticks{display:flex;justify-content:space-between;font-size:9px;color:var(--ink4);margin-top:5px}
 .db-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
 .db-stat-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px;text-align:center}
 .db-stat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-bottom:4px}
@@ -360,6 +372,14 @@ input,select,textarea{font-family:inherit;outline:none}
     <div class="cf-filter-box"><div class="cf-filter-lbl">Card Category</div><select class="cf-filter-sel" id="dbCat" onchange="renderDashboard()"><option value="ALL">All</option><option value="CONSUMER">Consumer</option><option value="BUSINESS">Business</option></select></div>
     <div class="cf-filter-box"><div class="cf-filter-lbl">Settlement Type</div><select class="cf-filter-sel" id="dbSettle" onchange="renderDashboard()"><option value="ALL">All</option><option value="INSTANT">Instant</option><option value="T+1">T+1</option><option value="T+2">T+2</option><option value="Batch Settlement">Batch Settlement</option></select></div>
   </div>
+  <div class="db-slider-wrap">
+    <div class="db-slider-lbl">
+      <span class="db-slider-title">Min Transaction Amount</span>
+      <span class="db-slider-val" id="dbSliderVal">Any amount</span>
+    </div>
+    <input type="range" class="db-slider" id="dbAmountSlider" min="0" max="500000" step="5000" value="0" oninput="dbSliderUpdate(this.value)">
+    <div class="db-slider-ticks"><span>Any</span><span>₹50K</span><span>₹1L</span><span>₹2L</span><span>₹3L</span><span>₹5L+</span></div>
+  </div>
   <div class="db-summary" id="dbSummaryCards"></div>
   <div id="dashboardTable"></div>
 </div>
@@ -462,6 +482,8 @@ let editingRowIndex = null;
 let pgAdminFilters = {};   // active column filters for admin PG table
 let dbScheme = 'ALL';
 let dbSortCol = 'avgPG'; let dbSortDir = 1;
+let dbExpanded = new Set();
+let dbAmountMin = 0;
 
 const VENDOR_COLORS = {
   'Instantmudra':'#2563eb','Greenpay':'#16a34a','Imperia':'#7c3aed',
@@ -488,8 +510,18 @@ function dbSetScheme(s,btn){
   renderDashboard();
 }
 function dbSetSort(col){
-  dbSortDir = dbSortCol===col ? dbSortDir*-1 : 1;
-  dbSortCol = col;
+  dbSortDir=dbSortCol===col?dbSortDir*-1:1;
+  dbSortCol=col;
+  renderDashboard();
+}
+function dbToggleVendor(vendor){
+  if(dbExpanded.has(vendor)) dbExpanded.delete(vendor); else dbExpanded.add(vendor);
+  renderDashboard();
+}
+function dbSliderUpdate(val){
+  dbAmountMin=parseInt(val)||0;
+  const el=document.getElementById('dbSliderVal');
+  if(el) el.textContent=dbAmountMin>0?fmtAmt(dbAmountMin):'Any amount';
   renderDashboard();
 }
 function renderDashboard(){
@@ -499,25 +531,35 @@ function renderDashboard(){
     if(dbScheme!=='ALL'&&!(r['CARD SCHEME']||'').includes(dbScheme)) return false;
     if(cat!=='ALL'&&!(r['CARD CATEGORY']||'').includes(cat)) return false;
     if(settle!=='ALL'&&(r['SETTLEMENT TYPE']||'INSTANT')!==settle) return false;
+    // Slider: exclude rows whose max limit is set AND less than required amount
+    if(dbAmountMin>0&&r['MAX AMOUNT (₹)']>0&&r['MAX AMOUNT (₹)']<dbAmountMin) return false;
     return true;
   });
-  // Group by vendor
+  const avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
+  // Group by vendor → pg name
   const map={};
   filtered.forEach(r=>{
-    const v=r['VENDOR'];
-    if(!map[v]) map[v]={pg:[],sw:[]};
-    if(r['PG RATE (%)']>0) map[v].pg.push(r['PG RATE (%)']);
-    if(r['SWIPE RATE (%)']>0) map[v].sw.push(r['SWIPE RATE (%)']);
+    const v=r['VENDOR'], p=r['PG NAME'];
+    if(!map[v]) map[v]={};
+    if(!map[v][p]) map[v][p]={pg:[],sw:[]};
+    if(r['PG RATE (%)']>0) map[v][p].pg.push(r['PG RATE (%)']);
+    if(r['SWIPE RATE (%)']>0) map[v][p].sw.push(r['SWIPE RATE (%)']);
   });
-  const avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
-  let rows=Object.entries(map).map(([vendor,{pg,sw}])=>({
-    vendor,count:pg.length,
-    minPG:pg.length?Math.min(...pg):0, maxPG:pg.length?Math.max(...pg):0, avgPG:avg(pg),
-    minSW:sw.length?Math.min(...sw):0, maxSW:sw.length?Math.max(...sw):0, avgSW:avg(sw),
-  }));
-  // Sort
+  let rows=Object.entries(map).map(([vendor,pgs])=>{
+    const pgRows=Object.entries(pgs).map(([name,{pg,sw}])=>({
+      name,
+      minPG:pg.length?Math.min(...pg):0, maxPG:pg.length?Math.max(...pg):0, avgPG:avg(pg),
+      minSW:sw.length?Math.min(...sw):0, maxSW:sw.length?Math.max(...sw):0, avgSW:avg(sw),
+    })).sort((a,b)=>a.avgPG-b.avgPG);
+    const allPG=pgRows.flatMap(p=>[p.minPG,p.maxPG].filter(Boolean));
+    const allSW=pgRows.flatMap(p=>[p.minSW,p.maxSW].filter(Boolean));
+    return {
+      vendor, pgRows, count:pgRows.length,
+      minPG:allPG.length?Math.min(...allPG):0, maxPG:allPG.length?Math.max(...allPG):0, avgPG:avg(pgRows.map(p=>p.avgPG).filter(Boolean)),
+      minSW:allSW.length?Math.min(...allSW):0, maxSW:allSW.length?Math.max(...allSW):0, avgSW:avg(pgRows.map(p=>p.avgSW).filter(Boolean)),
+    };
+  });
   rows.sort((a,b)=>(typeof a[dbSortCol]==='string'?a[dbSortCol].localeCompare(b[dbSortCol]):(a[dbSortCol]-b[dbSortCol]))*dbSortDir);
-  // Grand total
   const allPG=filtered.filter(r=>r['PG RATE (%)']>0).map(r=>r['PG RATE (%)']);
   const allSW=filtered.filter(r=>r['SWIPE RATE (%)']>0).map(r=>r['SWIPE RATE (%)']);
   // Summary cards
@@ -527,41 +569,33 @@ function renderDashboard(){
     {lbl:'Min PG Rate',val:allPG.length?fmtRate(Math.min(...allPG)):'—',cls:'color:var(--green)'},
     {lbl:'Avg PG Rate',val:allPG.length?fmtRate(avg(allPG)):'—',cls:'color:var(--accent)'},
   ].map(s=>`<div class="db-stat-card"><div class="db-stat-lbl">${s.lbl}</div><div class="db-stat-val" style="${s.cls}">${s.val}</div></div>`).join('');
-  // Sort indicator helper
   const si=col=>col===dbSortCol?(dbSortDir===1?' ↑':' ↓'):'';
   const hdr=(col,lbl)=>`<th onclick="dbSetSort('${col}')">${lbl}${si(col)}</th>`;
-  // Table
   const tbl=`<div class="dash-table-wrap"><table class="dash-table">
     <thead><tr>
       ${hdr('vendor','Vendor')}
-      ${hdr('minPG','Min PG')}
-      ${hdr('maxPG','Max PG')}
-      ${hdr('avgPG','Avg PG')}
-      ${hdr('minSW','Min Swipe')}
-      ${hdr('maxSW','Max Swipe')}
-      ${hdr('avgSW','Avg Swipe')}
+      ${hdr('minPG','Min PG')}${hdr('maxPG','Max PG')}${hdr('avgPG','Avg PG')}
+      ${hdr('minSW','Min Swipe')}${hdr('maxSW','Max Swipe')}${hdr('avgSW','Avg Swipe')}
     </tr></thead>
     <tbody>
       ${rows.map(r=>{
-        const c=vc(r.vendor);
-        return `<tr>
-          <td><span class="dash-vendor" style="color:${c}">${r.vendor}</span><span class="dash-count">(${r.count})</span></td>
-          <td class="rate-min">${fmtRate(r.minPG)}</td>
-          <td class="rate-max">${fmtRate(r.maxPG)}</td>
-          <td class="rate-avg">${fmtRate(r.avgPG)}</td>
-          <td class="swipe-min">${r.minSW?fmtRate(r.minSW):'—'}</td>
-          <td class="swipe-max">${r.maxSW?fmtRate(r.maxSW):'—'}</td>
-          <td class="swipe-avg">${r.avgSW?fmtRate(r.avgSW):'—'}</td>
-        </tr>`;
+        const exp=dbExpanded.has(r.vendor), c=vc(r.vendor);
+        const safeV=r.vendor.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<tr class="dash-vendor-row" onclick="dbToggleVendor('${safeV}')">
+          <td><span class="dash-expand-icon">${exp?'▼':'▶'}</span><span class="dash-vendor" style="color:${c}">${r.vendor}</span><span class="dash-count">(${r.count} PGs)</span></td>
+          <td class="rate-min">${fmtRate(r.minPG)}</td><td class="rate-max">${fmtRate(r.maxPG)}</td><td class="rate-avg">${fmtRate(r.avgPG)}</td>
+          <td class="swipe-min">${r.minSW?fmtRate(r.minSW):'—'}</td><td class="swipe-max">${r.maxSW?fmtRate(r.maxSW):'—'}</td><td class="swipe-avg">${r.avgSW?fmtRate(r.avgSW):'—'}</td>
+        </tr>
+        ${exp?r.pgRows.map(p=>`<tr class="dash-detail-row">
+          <td>${p.name}</td>
+          <td class="rate-min">${fmtRate(p.minPG)}</td><td class="rate-max">${fmtRate(p.maxPG)}</td><td class="rate-avg">${fmtRate(p.avgPG)}</td>
+          <td class="swipe-min">${p.minSW?fmtRate(p.minSW):'—'}</td><td class="swipe-max">${p.maxSW?fmtRate(p.maxSW):'—'}</td><td class="swipe-avg">${p.avgSW?fmtRate(p.avgSW):'—'}</td>
+        </tr>`).join(''):''}`;
       }).join('')}
       <tr class="total-row">
         <td>Grand Total (${filtered.length} rates)</td>
-        <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td>
-        <td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td>
-        <td>${allPG.length?fmtRate(avg(allPG)):'—'}</td>
-        <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td>
-        <td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td>
-        <td>${allSW.length?fmtRate(avg(allSW)):'—'}</td>
+        <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td><td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td><td>${allPG.length?fmtRate(avg(allPG)):'—'}</td>
+        <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td><td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td><td>${allSW.length?fmtRate(avg(allSW)):'—'}</td>
       </tr>
     </tbody>
   </table></div>`;
