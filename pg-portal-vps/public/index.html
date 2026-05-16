@@ -226,6 +226,29 @@ input,select,textarea{font-family:inherit;outline:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── DASHBOARD ────────────────────────────────────────────────────────── */
+.dash-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);border:1.5px solid var(--line);margin-bottom:16px}
+.dash-table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}
+.dash-table th{background:var(--ink);color:#fff;padding:9px 12px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;user-select:none}
+.dash-table th:not(:first-child){text-align:right}
+.dash-table td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.dash-table td:not(:first-child){text-align:right;font-family:'DM Mono',monospace;font-size:12px}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tr:hover td{background:var(--line2)}
+.dash-table .total-row td{background:var(--ink);color:#fff;font-weight:700;border-bottom:none}
+.dash-table .total-row td{font-family:'DM Mono',monospace}
+.dash-vendor{font-weight:700;color:var(--ink);font-size:12px}
+.dash-count{font-size:10px;color:var(--ink4);margin-left:4px}
+.rate-min{color:var(--green)}
+.rate-max{color:var(--red)}
+.rate-avg{color:var(--accent)}
+.swipe-min{color:var(--teal)}
+.swipe-max{color:var(--amber)}
+.swipe-avg{color:var(--purple)}
+.db-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.db-stat-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px;text-align:center}
+.db-stat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-bottom:4px}
+.db-stat-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:600}
 ::-webkit-scrollbar{width:0;height:0}
 </style>
 </head>
@@ -319,6 +342,28 @@ input,select,textarea{font-family:inherit;outline:none}
   <div id="cfResults"></div>
 </div>
 
+<!-- DASHBOARD -->
+<div class="page" id="pageDashboard">
+  <div class="rc-vendor-banner" style="background:linear-gradient(135deg,#1e3a5f,#0f172a);margin-bottom:14px">
+    <div class="rc-vendor-name">Rate Dashboard</div>
+    <div class="rc-vendor-meta">Min · Max · Avg PG & Swipe rates by vendor</div>
+  </div>
+  <div class="chip-row" id="dbSchemeChips" style="margin-bottom:12px">
+    <button class="fchip active" data-scheme="ALL" onclick="dbSetScheme('ALL',this)">All Schemes</button>
+    <button class="fchip" data-scheme="VISA" onclick="dbSetScheme('VISA',this)">VISA</button>
+    <button class="fchip" data-scheme="MASTERCARD" onclick="dbSetScheme('MASTERCARD',this)">MasterCard</button>
+    <button class="fchip" data-scheme="RUPAY" onclick="dbSetScheme('RUPAY',this)">RuPay</button>
+    <button class="fchip" data-scheme="AMEX" onclick="dbSetScheme('AMEX',this)">AMEX</button>
+    <button class="fchip" data-scheme="DINERS CLUB" onclick="dbSetScheme('DINERS CLUB',this)">Diners</button>
+  </div>
+  <div class="cf-filters" style="margin-bottom:14px">
+    <div class="cf-filter-box"><div class="cf-filter-lbl">Card Category</div><select class="cf-filter-sel" id="dbCat" onchange="renderDashboard()"><option value="ALL">All</option><option value="CONSUMER">Consumer</option><option value="BUSINESS">Business</option></select></div>
+    <div class="cf-filter-box"><div class="cf-filter-lbl">Settlement Type</div><select class="cf-filter-sel" id="dbSettle" onchange="renderDashboard()"><option value="ALL">All</option><option value="INSTANT">Instant</option><option value="T+1">T+1</option><option value="T+2">T+2</option><option value="Batch Settlement">Batch Settlement</option></select></div>
+  </div>
+  <div class="db-summary" id="dbSummaryCards"></div>
+  <div id="dashboardTable"></div>
+</div>
+
 <!-- ALL PGs -->
 <div class="page" id="pageAllPGs">
   <div class="search-wrap">
@@ -375,6 +420,7 @@ input,select,textarea{font-family:inherit;outline:none}
   <button class="nav-tab active" id="tab-home" onclick="showPage('Home')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></button>
   <button class="nav-tab" id="tab-cardFinder" onclick="showPage('CardFinder')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Card Find</span></button>
   <button class="nav-tab" id="tab-allPGs" onclick="showPage('AllPGs')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>All PGs</span></button>
+  <button class="nav-tab" id="tab-dashboard" onclick="showPage('Dashboard')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="2" y="12" width="4" height="10" rx="1"/><rect x="9" y="7" width="4" height="15" rx="1"/><rect x="16" y="2" width="4" height="20" rx="1"/></svg><span>Stats</span></button>
   <button class="nav-tab" id="tab-admin" onclick="showPage('Admin')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg><span>Admin</span></button>
 </nav>
 
@@ -413,6 +459,8 @@ let adminUnlocked = false;
 let editingSheet = null;
 let editingRowIndex = null;
 let pgAdminFilters = {};   // active column filters for admin PG table
+let dbScheme = 'ALL';
+let dbSortCol = 'avgPG'; let dbSortDir = 1;
 
 const VENDOR_COLORS = {
   'Instantmudra':'#2563eb','Greenpay':'#16a34a','Imperia':'#7c3aed',
@@ -428,6 +476,97 @@ const CARD_CATS = ['CONSUMER','BUSINESS','GOVERNMENT','ALL'];
 const SETTLEMENTS = ['INSTANT','T+1','T+2','Batch Settlement'];
 
 function vc(v){ return VENDOR_COLORS[v]||'#334155'; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+function dbSetScheme(s,btn){
+  dbScheme=s;
+  document.querySelectorAll('#dbSchemeChips .fchip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+function dbSetSort(col){
+  dbSortDir = dbSortCol===col ? dbSortDir*-1 : 1;
+  dbSortCol = col;
+  renderDashboard();
+}
+function renderDashboard(){
+  const cat=(document.getElementById('dbCat')||{}).value||'ALL';
+  const settle=(document.getElementById('dbSettle')||{}).value||'ALL';
+  const filtered=pgRates.filter(r=>{
+    if(dbScheme!=='ALL'&&!(r['CARD SCHEME']||'').includes(dbScheme)) return false;
+    if(cat!=='ALL'&&!(r['CARD CATEGORY']||'').includes(cat)) return false;
+    if(settle!=='ALL'&&(r['SETTLEMENT TYPE']||'INSTANT')!==settle) return false;
+    return true;
+  });
+  // Group by vendor
+  const map={};
+  filtered.forEach(r=>{
+    const v=r['VENDOR'];
+    if(!map[v]) map[v]={pg:[],sw:[]};
+    if(r['PG RATE (%)']>0) map[v].pg.push(r['PG RATE (%)']);
+    if(r['SWIPE RATE (%)']>0) map[v].sw.push(r['SWIPE RATE (%)']);
+  });
+  const avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
+  let rows=Object.entries(map).map(([vendor,{pg,sw}])=>({
+    vendor,count:pg.length,
+    minPG:pg.length?Math.min(...pg):0, maxPG:pg.length?Math.max(...pg):0, avgPG:avg(pg),
+    minSW:sw.length?Math.min(...sw):0, maxSW:sw.length?Math.max(...sw):0, avgSW:avg(sw),
+  }));
+  // Sort
+  rows.sort((a,b)=>(typeof a[dbSortCol]==='string'?a[dbSortCol].localeCompare(b[dbSortCol]):(a[dbSortCol]-b[dbSortCol]))*dbSortDir);
+  // Grand total
+  const allPG=filtered.filter(r=>r['PG RATE (%)']>0).map(r=>r['PG RATE (%)']);
+  const allSW=filtered.filter(r=>r['SWIPE RATE (%)']>0).map(r=>r['SWIPE RATE (%)']);
+  // Summary cards
+  const sumEl=document.getElementById('dbSummaryCards');
+  if(sumEl) sumEl.innerHTML=[
+    {lbl:'Vendors',val:rows.length,cls:'color:var(--ink)'},
+    {lbl:'Min PG Rate',val:allPG.length?fmtRate(Math.min(...allPG)):'—',cls:'color:var(--green)'},
+    {lbl:'Avg PG Rate',val:allPG.length?fmtRate(avg(allPG)):'—',cls:'color:var(--accent)'},
+  ].map(s=>`<div class="db-stat-card"><div class="db-stat-lbl">${s.lbl}</div><div class="db-stat-val" style="${s.cls}">${s.val}</div></div>`).join('');
+  // Sort indicator helper
+  const si=col=>col===dbSortCol?(dbSortDir===1?' ↑':' ↓'):'';
+  const hdr=(col,lbl)=>`<th onclick="dbSetSort('${col}')">${lbl}${si(col)}</th>`;
+  // Table
+  const tbl=`<div class="dash-table-wrap"><table class="dash-table">
+    <thead><tr>
+      ${hdr('vendor','Vendor')}
+      ${hdr('minPG','Min PG')}
+      ${hdr('maxPG','Max PG')}
+      ${hdr('avgPG','Avg PG')}
+      ${hdr('minSW','Min Swipe')}
+      ${hdr('maxSW','Max Swipe')}
+      ${hdr('avgSW','Avg Swipe')}
+    </tr></thead>
+    <tbody>
+      ${rows.map(r=>{
+        const c=vc(r.vendor);
+        return `<tr>
+          <td><span class="dash-vendor" style="color:${c}">${r.vendor}</span><span class="dash-count">(${r.count})</span></td>
+          <td class="rate-min">${fmtRate(r.minPG)}</td>
+          <td class="rate-max">${fmtRate(r.maxPG)}</td>
+          <td class="rate-avg">${fmtRate(r.avgPG)}</td>
+          <td class="swipe-min">${r.minSW?fmtRate(r.minSW):'—'}</td>
+          <td class="swipe-max">${r.maxSW?fmtRate(r.maxSW):'—'}</td>
+          <td class="swipe-avg">${r.avgSW?fmtRate(r.avgSW):'—'}</td>
+        </tr>`;
+      }).join('')}
+      <tr class="total-row">
+        <td>Grand Total (${filtered.length} rates)</td>
+        <td>${allPG.length?fmtRate(Math.min(...allPG)):'—'}</td>
+        <td>${allPG.length?fmtRate(Math.max(...allPG)):'—'}</td>
+        <td>${allPG.length?fmtRate(avg(allPG)):'—'}</td>
+        <td>${allSW.length?fmtRate(Math.min(...allSW)):'—'}</td>
+        <td>${allSW.length?fmtRate(Math.max(...allSW)):'—'}</td>
+        <td>${allSW.length?fmtRate(avg(allSW)):'—'}</td>
+      </tr>
+    </tbody>
+  </table></div>`;
+  const el=document.getElementById('dashboardTable');
+  if(el) el.innerHTML=tbl;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // API CALLS
@@ -482,6 +621,7 @@ function processData(data) {
   populateAllPGFilters();
   renderAllPGs();
   renderCardFinder();
+  renderDashboard();
 }
 
 async function apiWrite(sheet, rowIndex, values, action) {
