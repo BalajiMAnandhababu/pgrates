@@ -952,21 +952,20 @@ async function toggleStatus(sheet, rowIndex, newStatus){
 // MODAL — ADD / EDIT
 // ══════════════════════════════════════════════════════════════════════════════
 function pgFormHTML(data={}) {
-  const f = (label,id,type,opts='',val='')=>
-    `<div class="form-field"><label>${label}</label>${
-      type==='select'?`<select id="mf_${id}">${opts}</select>`:
-      `<input type="${type}" id="mf_${id}" value="${val}" placeholder="${label}">`
-    }</div>`;
-  const sel = (id,options,val)=>`<select id="mf_${id}">${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  const isNew = !('VENDOR' in data); // true when opening Add modal (empty object)
+  const sel  = (id,options,val,blank=false)=>`<select id="mf_${id}">${blank?'<option value="">—</option>':''}${options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
   const multiSel = (id,options,val)=>{ const cur=(val||'').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean); return `<div class="multi-check">${options.map(o=>`<label class="check-lbl"><input type="checkbox" name="mf_${id}" value="${o}" ${cur.includes(o.toUpperCase())?'checked':''}> ${o}</label>`).join('')}</div>`; };
+  // For new rows default to VISA + MASTERCARD so the form is valid out of the box
+  const defaultScheme = isNew ? 'VISA, MASTERCARD' : (data['CARD SCHEME']||'');
+  const defaultCat    = isNew ? 'CONSUMER'          : (data['CARD CATEGORY']||'');
 
   return `<div class="form-grid">
     <div class="form-field"><label>VENDOR</label><input id="mf_vendor" value="${data['VENDOR']||''}" list="dl_vendors" placeholder="Vendor name"><datalist id="dl_vendors">${[...new Set(pgRatesAll.map(r=>r['VENDOR']))].map(v=>`<option value="${v}">`).join('')}</datalist></div>
     <div class="form-field form-full"><label>PG NAME</label><input id="mf_pgname" value="${data['PG NAME']||''}" placeholder="Gateway name"></div>
-    <div class="form-field"><label>GATEWAY CATEGORY</label>${sel('gcat',GATEWAY_CATEGORIES,data['GATEWAY CATEGORY']||'')}</div>
-    <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'')}</div>
-    <div class="form-field form-full"><label>CARD SCHEME</label>${multiSel('scheme',SCHEMES,data['CARD SCHEME']||'')}</div>
-    <div class="form-field form-full"><label>CARD CATEGORY</label>${multiSel('cardcat',['CONSUMER','BUSINESS'],data['CARD CATEGORY']||'')}</div>
+    <div class="form-field"><label>GATEWAY CATEGORY</label>${sel('gcat',GATEWAY_CATEGORIES,data['GATEWAY CATEGORY']||'',true)}</div>
+    <div class="form-field"><label>AGGREGATOR</label>${sel('agg',AGGREGATORS,data['PAYMENT GATEWAY AGGREGATOR']||'',true)}</div>
+    <div class="form-field form-full"><label>CARD SCHEME</label>${multiSel('scheme',SCHEMES,defaultScheme)}</div>
+    <div class="form-field form-full"><label>CARD CATEGORY</label>${multiSel('cardcat',['CONSUMER','BUSINESS'],defaultCat)}</div>
     <div class="form-field"><label>PG RATE (%)</label><input type="number" step="0.01" id="mf_pgrate" value="${data['PG RATE (%)']||''}" placeholder="e.g. 1.60"></div>
     <div class="form-field"><label>SWIPE RATE (%)</label><input type="number" step="0.01" id="mf_swipe" value="${data['SWIPE RATE (%)']||''}" placeholder="e.g. 2.30"></div>
     <div class="form-field"><label>MIN AMOUNT (₹)</label><input type="number" id="mf_min" value="${data['MIN AMOUNT (₹)']||''}" placeholder="e.g. 100"></div>
@@ -1026,11 +1025,12 @@ async function savePGRow(){
   if(!scheme){ showToast('Select at least one Card Scheme'); return; }
 
   // Build field map keyed by sheet header name
+  const gcat = g('gcat'); const agg = g('agg');
   const fieldMap = {
     'VENDOR': vendor,
     'PG NAME': pgname,
-    'GATEWAY CATEGORY': g('gcat'),
-    'PAYMENT GATEWAY AGGREGATOR': g('agg'),
+    'GATEWAY CATEGORY': gcat === '—' ? '' : gcat,
+    'PAYMENT GATEWAY AGGREGATOR': agg === '—' ? '' : agg,
     'CATEGORY': g('cat'),
     'SETTLEMENT TYPE': g('settle'),
     'CARD SCHEME': scheme,
