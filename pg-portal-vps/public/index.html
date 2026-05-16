@@ -190,6 +190,9 @@ input,select,textarea{font-family:inherit;outline:none}
 /* Edit/Delete buttons */
 .tbl-edit-btn{font-size:10px;font-weight:600;color:var(--accent);padding:3px 8px;background:var(--accent-l);border-radius:4px;white-space:nowrap;margin-right:4px}
 .tbl-del-btn{font-size:10px;font-weight:600;color:var(--red);padding:3px 8px;background:var(--red-l);border-radius:4px;white-space:nowrap}
+.filter-row th{background:var(--ink2);padding:4px 6px}
+.tbl-filter{width:100%;padding:4px 6px;font-size:10px;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:#fff;outline:none}
+.tbl-filter::placeholder{color:rgba(255,255,255,.35)}
 
 /* Form */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
@@ -409,6 +412,7 @@ let activePage = 'Home';
 let adminUnlocked = false;
 let editingSheet = null;
 let editingRowIndex = null;
+let pgAdminFilters = {};   // active column filters for admin PG table
 
 const VENDOR_COLORS = {
   'Instantmudra':'#2563eb','Greenpay':'#16a34a','Imperia':'#7c3aed',
@@ -692,8 +696,11 @@ function onGlobalSearch(q){
           ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']+' ('+b['CARD SCHEME']+')').join(', ')} restricted</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4)">Min PG Rate</div>
           <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:600;color:var(--accent)">${fmtRate(minRate)}</div>
-          <div style="font-size:10px;color:var(--ink3)">Max ${fmtAmt(maxLimit)}</div>
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-top:2px">Min Swipe</div>
+          <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)">${fmtRate(Math.min(...rows.map(r=>r['SWIPE RATE (%)']||99).filter(v=>v<99)))}</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:2px">Max ${fmtAmt(maxLimit)}</div>
         </div>
       </div>
       <div class="pgc-detail">
@@ -794,10 +801,12 @@ function renderCardFinder(){
           ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ Blocked: ${blocks.map(b=>b['ISSUER BANK']).join(' · ')}</div>`:'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600">✓ No issuer restrictions</div>'}
         </div>
         <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4)">Min PG Rate</div>
           <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${fmtRate(minRate)}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--amber)">Swipe ${fmtRate(minSwipe)}</div>
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-top:2px">Min Swipe</div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--amber)">${fmtRate(minSwipe)}</div>
           <div style="font-size:11px;color:var(--ink3);margin-top:2px">Max ${fmtAmt(maxLimit)}</div>
-          ${rep['SETTLEMENT TYPE']?`<div style="font-size:10px;font-weight:700;margin-top:4px;padding:2px 7px;border-radius:4px;display:inline-block;${rep['SETTLEMENT TYPE']==='INSTANT'?'background:var(--green-l);color:var(--green)':rep['SETTLEMENT TYPE']==='T+1'?'background:var(--amber-l);color:var(--amber)':'background:var(--line2);color:var(--ink3)'}">${rep['SETTLEMENT TYPE']}</div>`:''}
+          ${rep['SETTLEMENT TYPE']?`<div style="font-size:9px;font-weight:700;margin-top:3px;padding:2px 6px;border-radius:4px;display:inline-block;${rep['SETTLEMENT TYPE']==='INSTANT'?'background:var(--green-l);color:var(--green)':rep['SETTLEMENT TYPE']==='T+1'?'background:var(--amber-l);color:var(--amber)':'background:var(--line2);color:var(--ink3)'}">${rep['SETTLEMENT TYPE']}</div>`:''}
         </div>
       </div>
       <div class="pgc-detail">
@@ -862,9 +871,12 @@ function renderAllPGs(){
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4)">Min PG Rate</div>
           <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--accent)">${fmtRate(minR)}</div>
-          <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)">Swipe ${fmtRate(Math.min(...rows.map(r=>r['SWIPE RATE (%)']||99).filter(v=>v<99)))}</div>
-          <div style="font-size:10px;color:var(--ink3)">${fmtAmt(maxL)}</div>
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4);margin-top:2px">Min Swipe</div>
+          <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)">${fmtRate(Math.min(...rows.map(r=>r['SWIPE RATE (%)']||99).filter(v=>v<99)))}</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:2px">${fmtAmt(maxL)}</div>
+          ${rep['SETTLEMENT TYPE']?`<div style="font-size:9px;font-weight:700;margin-top:3px;padding:2px 6px;border-radius:4px;display:inline-block;${rep['SETTLEMENT TYPE']==='INSTANT'?'background:var(--green-l);color:var(--green)':rep['SETTLEMENT TYPE']==='T+1'?'background:var(--amber-l);color:var(--amber)':'background:var(--line2);color:var(--ink3)'}">${rep['SETTLEMENT TYPE']}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -899,13 +911,27 @@ function switchAdminTab(tab){
 }
 
 // ── PG Rates Admin Table ──────────────────────────────────────────────────────
-function renderAdminPGTable(){
+function setPGFilter(col, val){
+  pgAdminFilters[col] = val.trim().toLowerCase();
+  renderAdminPGTable(true);
+}
+function renderAdminPGTable(keepScroll=false){
   const wrap = document.getElementById('adminPGTableWrap');
   if(!pgRatesAll.length){ wrap.innerHTML='<div class="no-results">No data loaded</div>'; return; }
-  const cols = ['VENDOR','PG NAME','GATEWAY CATEGORY','PAYMENT GATEWAY AGGREGATOR','CARD SCHEME','CARD CATEGORY','PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)','STATUS'];
+  const cols = ['VENDOR','PG NAME','GATEWAY CATEGORY','PAYMENT GATEWAY AGGREGATOR','CARD SCHEME','CARD CATEGORY','PG RATE (%)','SWIPE RATE (%)','MAX AMOUNT (₹)','SETTLEMENT TYPE','STATUS'];
+  // Apply column filters
+  const rows = pgRatesAll.filter(r=>cols.every(c=>{
+    const f=pgAdminFilters[c]||'';
+    if(!f) return true;
+    return (r[c]||'').toString().toLowerCase().includes(f);
+  }));
+  const scrollTop = keepScroll ? (wrap.querySelector('.admin-table-wrap')||{}).scrollTop||0 : 0;
   wrap.innerHTML=`<div class="admin-table-wrap"><table class="admin-table">
-    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr></thead>
-    <tbody>${pgRatesAll.map((r,i)=>{
+    <thead>
+      <tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>ACTIONS</th></tr>
+      <tr class="filter-row">${cols.map(c=>`<th><input class="tbl-filter" placeholder="Filter…" value="${pgAdminFilters[c]||''}" oninput="setPGFilter('${c.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this.value)"></th>`).join('')}<th></th></tr>
+    </thead>
+    <tbody>${rows.map((r)=>{
       const inactive=(r['STATUS']||'ACTIVE').toUpperCase()==='INACTIVE';
       return `<tr class="${inactive?'inactive':''}">
         ${cols.map(c=>`<td>${c==='STATUS'?
@@ -917,6 +943,8 @@ function renderAdminPGTable(){
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
+  const scrollEl=wrap.querySelector('.admin-table-wrap');
+  if(scrollEl&&keepScroll) scrollEl.scrollTop=scrollTop;
 }
 
 // ── Issuer Blocks Admin Table ─────────────────────────────────────────────────
