@@ -1367,8 +1367,8 @@ function fmtBlockLabel(b){
   let label = banks;
   if(scheme!=='ALL') label += ` [${scheme}]`;
   if(affCat!=='ALL') label += ` [${affCat}]`;
-  if(type==='PARTIAL') label += threshold ? ` — partial above ${fmtAmt(threshold)}` : ' — partial';
-  else label += ' — fully blocked';
+  if(type==='PARTIAL') label += threshold ? ` — restricted above ${fmtAmt(threshold)}` : ' — restricted (partial)';
+  else label += ' — restricted';
   return label;
 }
 function fmtNum(v){ const n=parseFloat(v); if(!v||isNaN(n)) return '—'; return n.toLocaleString('en-IN'); }
