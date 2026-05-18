@@ -659,11 +659,11 @@ function processData(data) {
   renderDashboard();
 }
 
-async function apiWrite(sheet, rowIndex, values, action) {
+async function apiWrite(sheet, rowIndex, values, action, skipCols=[]) {
   return apiFetch('/sheets', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'x-admin-pin': ADMIN_PIN },
-    body: JSON.stringify({ sheet, rowIndex, values, action }),
+    body: JSON.stringify({ sheet, rowIndex, values, action, skipCols }),
   });
 }
 
@@ -1320,7 +1320,7 @@ async function savePGRow(){
     'CARD SCHEME': scheme,
     'CARD CATEGORY': cardcat,
     'PG RATE (%)': pgrate,
-    'SWIPE RATE (%)': '', // formula in sheet — never overwrite
+    'SWIPE RATE (%)': '__SKIP__', // formula in sheet — never overwrite
     'MIN AMOUNT (₹)': g('min'),
     'MAX AMOUNT (₹)': g('max'),
     'RUPAY LIMIT (₹)': g('rupay'),
@@ -1332,8 +1332,12 @@ async function savePGRow(){
     ? pgRatesHeaders.map(h => fieldMap[h] ?? '')
     : Object.values(fieldMap); // fallback if headers not yet loaded
 
+  // Tell the server to skip the SWIPE RATE column so the sheet formula is preserved
+  const skipCols = values.map((v,i) => v === '__SKIP__' ? i : -1).filter(i => i >= 0);
+  const cleanValues = values.map(v => v === '__SKIP__' ? '' : v);
+
   try {
-    await apiWrite('PG_RATES', editingRowIndex, values, editingRowIndex===null?'add':'update');
+    await apiWrite('PG_RATES', editingRowIndex, cleanValues, editingRowIndex===null?'add':'update', skipCols);
     closeModalDirect(); showToast('Saved ✓'); await loadData();
     if(adminUnlocked) renderAdminPGTable();
   } catch(e){ showToast('Save failed: '+e.message); }

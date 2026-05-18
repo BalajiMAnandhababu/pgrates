@@ -116,12 +116,41 @@ app.post('/api/sheets', async (req, res) => {
 
     if (action === 'update') {
       const actualRow = cfg.dataStartRow + rowIndex;
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: `${cfg.tab}!A${actualRow}`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [values] },
-      });
+      const skipSet = new Set(req.body.skipCols || []);
+
+      if (skipSet.size === 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `${cfg.tab}!A${actualRow}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [values] },
+        });
+      } else {
+        // Build contiguous segments around skipped columns
+        const segments = [];
+        let segStart = null, segVals = [];
+        for (let i = 0; i <= values.length; i++) {
+          if (i === values.length || skipSet.has(i)) {
+            if (segVals.length > 0) {
+              segments.push({ startCol: segStart, vals: segVals });
+              segVals = []; segStart = null;
+            }
+          } else {
+            if (segStart === null) segStart = i;
+            segVals.push(values[i]);
+          }
+        }
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: SHEET_ID,
+          requestBody: {
+            valueInputOption: 'USER_ENTERED',
+            data: segments.map(s => ({
+              range: `${cfg.tab}!${colLetter(s.startCol + 1)}${actualRow}`,
+              values: [s.vals],
+            })),
+          },
+        });
+      }
       return res.json({ ok: true, action: 'updated', row: actualRow });
     }
 
