@@ -788,7 +788,7 @@ function renderRateCard(){
               ${gcat?`<span class="gcat-tag">📂 ${gcat}</span>`:''}
               ${agg?`<span class="agg-tag">⚡ ${agg}</span>`:''}
             </div>
-            ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']+' ('+b['CARD SCHEME']+')').join(', ')} restricted</div>`:''}
+            ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(fmtBlockLabel).join(' · ')}</div>`:''}
           </div>
           <div class="pgc-category">${rep['SETTLEMENT TYPE']||'INSTANT'}</div>
         </div>
@@ -868,7 +868,7 @@ function onGlobalSearch(q){
             ${schemes.map(schemeBadge).join('')}
             ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
           </div>
-          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(b=>b['ISSUER BANK']+' ('+b['CARD SCHEME']+')').join(', ')} restricted</div>`:''}
+          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(fmtBlockLabel).join(' · ')}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4)">Min PG Rate</div>
@@ -973,7 +973,7 @@ function renderCardFinder(){
             ${rep['GATEWAY CATEGORY']?`<span class="gcat-tag">📂 ${rep['GATEWAY CATEGORY']}</span>`:''}
             ${rep['PAYMENT GATEWAY AGGREGATOR']?`<span class="agg-tag">⚡ ${rep['PAYMENT GATEWAY AGGREGATOR']}</span>`:''}
           </div>
-          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ Blocked: ${blocks.map(b=>b['ISSUER BANK']).join(' · ')}</div>`:'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600">✓ No issuer restrictions</div>'}
+          ${blocks.length?`<div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ ${blocks.map(fmtBlockLabel).join(' · ')}</div>`:'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600">✓ No issuer restrictions</div>'}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink4)">Min PG Rate</div>
@@ -1358,6 +1358,19 @@ async function saveIBRow(){
 function parseMoney(v){ return parseFloat((v||'').toString().replace(/,/g,''))||0; }
 function fmtRate(v){ if(!v&&v!==0) return '—'; return parseFloat(v).toFixed(2)+'%'; }
 function fmtAmt(v){ if(!v) return '—'; if(v>=100000) return '₹'+(v/100000).toFixed(1)+'L'; if(v>=1000) return '₹'+(v/1000).toFixed(0)+'K'; return '₹'+v; }
+function fmtBlockLabel(b){
+  const banks = b['ISSUER BANK']||'';
+  const scheme = (b['CARD SCHEME']||'ALL').trim().toUpperCase();
+  const type = (b['BLOCK TYPE']||'FULL').trim().toUpperCase();
+  const threshold = parseFloat(b['AMOUNT THRESHOLD (₹)'])||0;
+  const affCat = (b['AFFECTED CATEGORY']||'ALL').trim().toUpperCase();
+  let label = banks;
+  if(scheme!=='ALL') label += ` [${scheme}]`;
+  if(affCat!=='ALL') label += ` [${affCat}]`;
+  if(type==='PARTIAL') label += threshold ? ` — partial above ${fmtAmt(threshold)}` : ' — partial';
+  else label += ' — fully blocked';
+  return label;
+}
 function fmtNum(v){ const n=parseFloat(v); if(!v||isNaN(n)) return '—'; return n.toLocaleString('en-IN'); }
 function schemeName(s){
   if(!s) return s;
